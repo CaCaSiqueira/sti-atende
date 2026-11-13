@@ -52,6 +52,17 @@ const REGRAS: Regra[] = [
   },
 ];
 
+export const INTENCOES: Intencao[] = ["pop_car", "infraestrutura", "hardware", "sistemas", "desconhecido"];
+
+/**
+ * Setor e prioridade mínima de cada intenção. A IA interpreta a mensagem;
+ * quem decide setor e prioridade é este código, seguindo o SLA.
+ */
+export function rotearIntencao(intencao: Intencao): Pick<Classificacao, "setor" | "prioridade"> {
+  const regra = REGRAS.find((r) => r.intencao === intencao);
+  return regra ? { setor: regra.setor, prioridade: regra.prioridade } : { setor: "TRIAGEM", prioridade: "baixa" };
+}
+
 /** Remove acentos e padroniza caixa: "Não Conexão" -> "nao conexao". */
 export function normalizar(texto: string): string {
   return texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();

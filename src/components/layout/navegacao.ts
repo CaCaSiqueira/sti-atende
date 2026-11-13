@@ -1,4 +1,4 @@
-import { Bot, ChartPie, CirclePlus, HeartPulse, Search, Settings, type LucideIcon } from "lucide-react";
+import { Bot, ChartPie, CirclePlus, Search, Settings, type LucideIcon } from "lucide-react";
 
 export interface ItemNavegacao {
   href: string;
@@ -15,7 +15,6 @@ export const NAV_PRINCIPAL: ItemNavegacao[] = [
 ];
 
 export const NAV_ADMIN: ItemNavegacao[] = [
-  { href: "/saude", rotulo: "Saúde do Sistema", icone: HeartPulse },
   { href: "/configuracoes", rotulo: "Configurações", icone: Settings },
 ];
 

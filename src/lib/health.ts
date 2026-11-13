@@ -1,10 +1,13 @@
+import "server-only";
+import { pingBanco } from "./chamados";
+import { iaConfigurada, modeloIA, obterUltimaChamadaIA } from "./ia";
+
 /**
  * Verificações de saúde do STI Atende.
- * Usado pela rota /api/health e pela tela "Saúde do Sistema".
+ * Usado pela rota /api/health e pelo painel "Saúde do Sistema" em Configurações.
  */
 
 export type StatusVerificacao = "ok" | "degradado" | "falha" | "nao_configurado";
-
 export type IdVerificacao = "app" | "banco" | "ia" | "sema";
 
 export interface Verificacao {
@@ -26,47 +29,37 @@ export interface RelatorioSaude {
   verificacoes: Verificacao[];
 }
 
-const TIMEOUT_MS = 3000;
 const LATENCIA_LENTA_MS = 1000;
-
-async function medir(url: string, init?: RequestInit): Promise<{ ok: boolean; ms: number; codigo?: number; erro?: string }> {
-  const inicio = performance.now();
-  try {
-    const res = await fetch(url, { ...init, cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
-    return { ok: res.ok, ms: Math.round(performance.now() - inicio), codigo: res.status };
-  } catch (e) {
-    return { ok: false, ms: Math.round(performance.now() - inicio), erro: e instanceof Error ? e.name : "erro" };
-  }
-}
 
 function aplicacao(): Verificacao {
   return { id: "app", nome: "Aplicação (Next.js)", status: "ok", latenciaMs: 0, detalhe: "Servidor respondendo" };
 }
 
 async function bancoDeDados(): Promise<Verificacao> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const chave = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const base = { id: "banco", nome: "Banco de dados (Supabase)" } as const;
-  if (!url || !chave) {
-    return { ...base, status: "nao_configurado", latenciaMs: null, detalhe: "Será conectado na Sprint 3" };
-  }
-  const r = await medir(`${url}/auth/v1/health`, { headers: { apikey: chave } });
-  if (!r.ok) {
-    return { ...base, status: "falha", latenciaMs: r.ms, detalhe: r.erro === "TimeoutError" ? "Sem resposta em 3s" : `HTTP ${r.codigo ?? r.erro}` };
-  }
+  const r = await pingBanco();
+  if (!r) return { ...base, status: "nao_configurado", latenciaMs: null, detalhe: "Sem banco: usando dados de exemplo" };
+  if (!r.ok) return { ...base, status: "falha", latenciaMs: r.ms, detalhe: "Consulta ao banco falhou" };
   const lento = r.ms > LATENCIA_LENTA_MS;
-  return { ...base, status: lento ? "degradado" : "ok", latenciaMs: r.ms, detalhe: lento ? "Respondendo devagar" : "Conectado" };
+  return { ...base, status: lento ? "degradado" : "ok", latenciaMs: r.ms, detalhe: lento ? "Respondendo devagar" : "Consulta real à tabela de chamados" };
 }
 
+/**
+ * A IA não é chamada aqui de propósito: cada verificação gastaria a cota gratuita do Gemini.
+ * O painel mostra o resultado da última chamada real feita pelo chat.
+ */
 function assistenteIA(): Verificacao {
-  const configurado = Boolean(process.env.AI_API_KEY);
-  return {
-    id: "ia",
-    nome: "Assistente IA",
-    status: configurado ? "ok" : "nao_configurado",
-    latenciaMs: null,
-    detalhe: configurado ? `Provedor: ${process.env.AI_PROVIDER ?? "padrão"}` : "Regras locais ativas; modelo de IA na Sprint 3",
-  };
+  const base = { id: "ia", nome: `Assistente IA (Gemini ${modeloIA()})` } as const;
+  if (!iaConfigurada()) {
+    return { ...base, status: "nao_configurado", latenciaMs: null, detalhe: "Sem chave: chat usando regras locais" };
+  }
+  const ultima = obterUltimaChamadaIA();
+  if (!ultima) return { ...base, status: "ok", latenciaMs: null, detalhe: "Configurado; aguardando a primeira conversa" };
+  const quando = new Date(ultima.em).toLocaleTimeString("pt-BR", { timeZone: "America/Cuiaba" });
+  if (!ultima.ok) {
+    return { ...base, status: "degradado", latenciaMs: ultima.ms, detalhe: `Última chamada falhou às ${quando}; regras locais assumiram` };
+  }
+  return { ...base, status: ultima.ms > 5000 ? "degradado" : "ok", latenciaMs: ultima.ms, detalhe: `Última resposta às ${quando}` };
 }
 
 function integracaoSema(): Verificacao {

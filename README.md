@@ -34,8 +34,7 @@ Abra http://localhost:3000.
 | `/visao-geral` | Indicadores e volume por setor |
 | `/chamados` | Consulta com busca por número, assunto ou solicitante |
 | `/chamados/novo` | Abertura manual com classificação automática |
-| `/saude` | Saúde do Sistema ao vivo (atualiza a cada 15s) |
-| `/configuracoes` | Saúde do Sistema + Plano de Entrega |
+| `/configuracoes` | Saúde do Sistema ao vivo (atualiza a cada 15s) + Plano de Entrega |
 
 ## Regras de roteamento (SLA)
 

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { connection } from "next/server";
 import { Cabecalho } from "@/components/ui/Cabecalho";
 import { obterIndicadores } from "@/lib/chamados";
 import { SETORES } from "@/lib/setores";
@@ -6,6 +7,7 @@ import { SETORES } from "@/lib/setores";
 export const metadata: Metadata = { title: "Visão Geral" };
 
 export default async function VisaoGeral() {
+  await connection(); // dados sempre atuais do banco, sem pré-render
   const ind = await obterIndicadores();
   const cards = [
     { rotulo: "Chamados abertos", valor: ind.abertos, borda: "border-l-blue-500" },
@@ -16,7 +18,7 @@ export default async function VisaoGeral() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
-      <Cabecalho titulo="Visão Geral" descricao="Indicadores do atendimento de TI (dados de exemplo até a Sprint 3)" />
+      <Cabecalho titulo="Visão Geral" descricao="Indicadores do atendimento de TI, calculados em tempo real" />
 
       <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4 lg:gap-6">
         {cards.map((c) => (

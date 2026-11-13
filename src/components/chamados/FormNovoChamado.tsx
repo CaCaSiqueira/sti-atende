@@ -4,7 +4,6 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { CircleCheck } from "lucide-react";
 import type { Setor } from "@/types/chamado";
-import { classificar } from "@/lib/roteamento";
 import { SETORES } from "@/lib/setores";
 
 type Categoria = "" | Exclude<Setor, "TRIAGEM">;
@@ -17,19 +16,15 @@ interface Enviado {
 
 const MIN_DESCRICAO = 10;
 
-/** Protocolo provisório; na Sprint 3 o número vem do banco. */
-function gerarProtocolo(): string {
-  return `INC-${String(Math.floor(500 + Math.random() * 9000)).padStart(4, "0")}`;
-}
-
 export function FormNovoChamado() {
   const [assunto, setAssunto] = useState("");
   const [categoria, setCategoria] = useState<Categoria>("");
   const [descricao, setDescricao] = useState("");
-  const [erros, setErros] = useState<{ assunto?: string; descricao?: string }>({});
+  const [erros, setErros] = useState<{ assunto?: string; descricao?: string; geral?: string }>({});
+  const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState<Enviado | null>(null);
 
-  function enviar(e: FormEvent) {
+  async function enviar(e: FormEvent) {
     e.preventDefault();
     const novosErros: typeof erros = {};
     if (!assunto.trim()) novosErros.assunto = "Informe o assunto.";
@@ -37,8 +32,24 @@ export function FormNovoChamado() {
     setErros(novosErros);
     if (Object.keys(novosErros).length) return;
 
-    const setor: Setor = categoria || classificar(`${assunto} ${descricao}`).setor;
-    setEnviado({ protocolo: gerarProtocolo(), setor, classificadoPelaIA: !categoria });
+    setEnviando(true);
+    try {
+      const res = await fetch("/api/chamados", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assunto, descricao, ...(categoria ? { categoria } : {}) }),
+      });
+      const dados = await res.json().catch(() => ({}));
+      if (res.status !== 201) {
+        setErros({ geral: dados.erro ?? "Não foi possível abrir o chamado agora. Tente novamente." });
+        return;
+      }
+      setEnviado({ protocolo: dados.protocolo, setor: dados.setor, classificadoPelaIA: dados.classificadoAutomaticamente });
+    } catch {
+      setErros({ geral: "Sem conexão com o servidor. Tente novamente." });
+    } finally {
+      setEnviando(false);
+    }
   }
 
   function novo() {
@@ -113,8 +124,13 @@ export function FormNovoChamado() {
         {erros.descricao && <p id="erro-descricao" className="mt-1 text-sm text-red-600">{erros.descricao}</p>}
       </div>
 
-      <button type="submit" className="w-full rounded-lg bg-green-600 px-6 py-2 font-bold text-white transition hover:bg-green-700 sm:w-auto">
-        Abrir chamado
+      {erros.geral && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{erros.geral}</p>}
+      <button
+        type="submit"
+        disabled={enviando}
+        className="w-full rounded-lg bg-green-600 px-6 py-2 font-bold text-white transition hover:bg-green-700 disabled:opacity-60 sm:w-auto"
+      >
+        {enviando ? "Abrindo..." : "Abrir chamado"}
       </button>
     </form>
   );

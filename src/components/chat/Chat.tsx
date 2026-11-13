@@ -1,64 +1,39 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Bot, Paperclip, RefreshCw, Send, TriangleExclamationPoint, User } from "lucide-react";
-import { classificar, type Classificacao } from "@/lib/roteamento";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { Bot, Paperclip, RefreshCw, Send, Sparkles, TriangleExclamationPoint, User, Workflow } from "lucide-react";
+import type { Intencao } from "@/lib/roteamento";
 import { SETORES } from "@/lib/setores";
+import type { RespostaChat } from "@/app/api/chat/route";
 
-/**
- * Sprint 2: respostas montadas no navegador a partir das regras de roteamento.
- * Sprint 3: o envio passa a chamar a API da IA; estes tipos de resposta continuam valendo.
- */
+/** O navegador só exibe: classificação, chamado e regra de 24h do CAR acontecem no servidor. */
 
 type RespostaBot =
   | { tipo: "saudacao" }
-  | { tipo: "classificacao"; classificacao: Classificacao; protocolo: string }
+  | { tipo: "analise"; intencao: Intencao; texto: string | null; protocolo: string | null; fonte: "ia" | "regras" }
   | { tipo: "sync_ok" }
   | { tipo: "sync_bloqueada"; liberaEm: number }
-  | { tipo: "encaminhado_analista"; protocolo: string };
+  | { tipo: "encaminhado_analista"; protocolo: string }
+  | { tipo: "erro"; texto: string };
 
 type Mensagem =
   | { id: number; autor: "usuario"; texto: string }
   | { id: number; autor: "bot"; resposta: RespostaBot };
 
 const SUGESTOES = ["Erro no CAR", "Meu computador não liga", "Sem internet no setor", "O SIGPAS travou"];
-const CHAVE_SYNC_CAR = "sti-atende:ultima-sync-car";
-const JANELA_SYNC_MS = 24 * 60 * 60 * 1000;
-const ATRASO_RESPOSTA_MS = 800;
+const ERRO_PADRAO = "Não consegui processar agora. Tente de novo em instantes ou use “Novo Chamado Manual”.";
 
-// Limite local de 24h (demonstração). Na Sprint 3 o servidor passa a ser a fonte da verdade.
-function lerUltimaSync(): number | null {
-  try {
-    const v = localStorage.getItem(CHAVE_SYNC_CAR);
-    return v ? Number(v) : null;
-  } catch {
-    return null;
-  }
-}
-function gravarUltimaSync(ts: number) {
-  try {
-    localStorage.setItem(CHAVE_SYNC_CAR, String(ts));
-  } catch {
-    /* navegador sem armazenamento: segue sem bloquear */
-  }
-}
-
-/** Aplica a regra de SLA do CAR: no máximo 1 sincronização a cada 24h. */
-function tentarSincronizarCar(): RespostaBot {
-  const agora = Date.now();
-  const ultima = lerUltimaSync();
-  if (ultima && agora - ultima < JANELA_SYNC_MS) {
-    return { tipo: "sync_bloqueada", liberaEm: ultima + JANELA_SYNC_MS };
-  }
-  gravarUltimaSync(agora);
-  return { tipo: "sync_ok" };
+async function postJson<T>(url: string, corpo: unknown): Promise<{ status: number; dados: T & { erro?: string } }> {
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+  const dados = (await res.json().catch(() => ({}))) as T & { erro?: string };
+  return { status: res.status, dados };
 }
 
 function formatarDataHora(ts: number) {
   return new Date(ts).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
 }
 
-function Balao({ autor, children }: { autor: "usuario" | "bot"; children: React.ReactNode }) {
+function Balao({ autor, children }: { autor: "usuario" | "bot"; children: ReactNode }) {
   if (autor === "usuario") {
     return (
       <div className="chat-msg ml-auto flex max-w-3xl items-start justify-end gap-3">
@@ -83,15 +58,24 @@ function Protocolo({ numero }: { numero: string }) {
   return <p className="mt-3 inline-block rounded bg-gray-100 p-2 font-mono text-sm">Protocolo gerado: #{numero}</p>;
 }
 
-function ConteudoBot({
-  r,
-  aoSincronizar,
-  aoChamarAnalista,
-}: {
-  r: RespostaBot;
-  aoSincronizar: () => void;
-  aoChamarAnalista: () => void;
-}) {
+function Fonte({ fonte }: { fonte: "ia" | "regras" }) {
+  return fonte === "ia" ? (
+    <p className="mt-3 flex items-center gap-1 text-xs text-gray-400"><Sparkles className="size-3" aria-hidden /> Respondido pela IA (Gemini)</p>
+  ) : (
+    <p className="mt-3 flex items-center gap-1 text-xs text-gray-400"><Workflow className="size-3" aria-hidden /> Respondido pelas regras automáticas</p>
+  );
+}
+
+/** Texto usado quando a IA não respondeu e as regras assumiram. */
+const TEXTO_REGRAS: Record<Intencao, ReactNode> = {
+  pop_car: <p>Identifiquei um erro no sistema <strong>CAR</strong>. Temos um procedimento operacional padrão (POP) para isso. Deseja sincronizar a base agora?</p>,
+  hardware: <p>Isso parece ser um <strong>problema de equipamento</strong>. Registrei sua solicitação para a <strong>{SETORES.GATI.sigla} ({SETORES.GATI.nome})</strong>.</p>,
+  sistemas: <p>Identifiquei um problema de <strong>sistemas</strong>. Encaminhei para um analista da <strong>{SETORES.CSTI.sigla}</strong>.</p>,
+  infraestrutura: <p>Isso indica uma falha de <strong>rede ou infraestrutura</strong>. O alerta foi enviado para a <strong>{SETORES.INFRA.nome}</strong>.</p>,
+  desconhecido: <p>Entendi. Não há um procedimento automatizado para isso, então registrei um chamado para a <strong>triagem de nível 1</strong>, que vai repassar à equipe correta.</p>,
+};
+
+function ConteudoBot({ r, ocupado, aoSincronizar, aoChamarAnalista }: { r: RespostaBot; ocupado: boolean; aoSincronizar: () => void; aoChamarAnalista: () => void }) {
   switch (r.tipo) {
     case "saudacao":
       return (
@@ -100,128 +84,123 @@ function ConteudoBot({
           <p className="mt-2 text-sm text-gray-500">Descreva seu problema ou peça a abertura de um chamado.</p>
         </>
       );
+    case "erro":
+      return <p className="text-red-700">{r.texto}</p>;
     case "sync_ok":
       return <p>Sincronização do CAR iniciada com sucesso. Em alguns minutos os dados devem aparecer atualizados.</p>;
     case "sync_bloqueada":
       return (
         <p>
-          A sincronização já foi feita nas últimas 24 horas. A próxima fica liberada em{" "}
-          <strong>{formatarDataHora(r.liberaEm)}</strong>. Se o erro continuar, posso encaminhar para um analista da CSTI.
+          A sincronização já foi feita nas últimas 24 horas. A próxima fica liberada em <strong>{formatarDataHora(r.liberaEm)}</strong>. Se o
+          erro continuar, posso encaminhar para um analista da CSTI.
         </p>
       );
     case "encaminhado_analista":
       return (
         <>
-          <p>Pronto. Encaminhei seu caso para um analista da <strong>CSTI</strong>, com o histórico desta conversa.</p>
+          <p>Pronto. Encaminhei seu caso para um analista da <strong>CSTI</strong>.</p>
           <Protocolo numero={r.protocolo} />
         </>
       );
-    case "classificacao": {
-      const { intencao } = r.classificacao;
-      if (intencao === "pop_car") {
-        return (
-          <>
-            <p>Identifiquei um erro no sistema <strong>CAR</strong>. Temos um procedimento operacional padrão (POP) para isso.</p>
-            <p className="mt-2">Deseja sincronizar a base de dados agora?</p>
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
-              <TriangleExclamationPoint className="mt-0.5 size-4 shrink-0" aria-hidden />
-              <div>
-                <strong>Atenção ao SLA:</strong> a sincronização só é permitida 1 vez a cada 24 horas para evitar sobrecarga no
-                banco Oracle da SEMA.
-              </div>
-            </div>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-              <button onClick={aoSincronizar} className="flex items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-blue-700">
-                <RefreshCw className="size-4" aria-hidden /> Sincronizar CAR
-              </button>
-              <button onClick={aoChamarAnalista} className="rounded bg-gray-200 px-4 py-2 font-medium text-gray-800 transition hover:bg-gray-300">
-                Falar com analista (CSTI)
-              </button>
-            </div>
-          </>
-        );
-      }
-      if (intencao === "hardware") {
-        return (
-          <>
-            <p>Isso parece ser um <strong>problema físico ou de hardware</strong>.</p>
-            <p className="mt-2">Registrei sua solicitação e direcionei para a <strong>{SETORES.GATI.sigla} ({SETORES.GATI.nome})</strong>.</p>
-            <Protocolo numero={r.protocolo} />
-          </>
-        );
-      }
-      if (intencao === "sistemas") {
-        return (
-          <>
-            <p>Identifiquei um problema de <strong>sistemas</strong>.</p>
-            <p className="mt-2">Sua solicitação foi encaminhada para um analista da <strong>{SETORES.CSTI.sigla}</strong>.</p>
-            <Protocolo numero={r.protocolo} />
-            <p className="mt-2 text-sm text-gray-500">Acompanhe o status em “Consultar Chamados”.</p>
-          </>
-        );
-      }
-      if (intencao === "infraestrutura") {
-        return (
-          <>
-            <p>Isso indica uma falha de <strong>rede ou infraestrutura</strong>.</p>
-            <p className="mt-2">
-              O alerta foi enviado para a <strong>{SETORES.INFRA.nome}</strong>. Por ser crítico, a prioridade de SLA foi ajustada para{" "}
-              <strong className="text-red-700">Urgente</strong>.
-            </p>
-            <Protocolo numero={r.protocolo} />
-          </>
-        );
-      }
+    case "analise":
       return (
         <>
-          <p>
-            Entendi. Não há um procedimento automatizado (POP) exato para isso, então registrei um chamado e enviei para a{" "}
-            <strong>triagem de nível 1</strong>.
-          </p>
-          <p className="mt-2">Um analista vai revisar o caso e repassar à equipe correta: GATI, CSTI ou Infraestrutura.</p>
-          <Protocolo numero={r.protocolo} />
+          {r.texto ? <p className="whitespace-pre-line">{r.texto}</p> : TEXTO_REGRAS[r.intencao]}
+
+          {r.intencao === "pop_car" && (
+            <>
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+                <TriangleExclamationPoint className="mt-0.5 size-4 shrink-0" aria-hidden />
+                <div>
+                  <strong>Atenção ao SLA:</strong> a sincronização só é permitida 1 vez a cada 24 horas para evitar sobrecarga no banco
+                  Oracle da SEMA.
+                </div>
+              </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                <button disabled={ocupado} onClick={aoSincronizar} className="flex items-center justify-center gap-2 rounded bg-blue-600 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-50">
+                  <RefreshCw className="size-4" aria-hidden /> Sincronizar CAR
+                </button>
+                <button disabled={ocupado} onClick={aoChamarAnalista} className="rounded bg-gray-200 px-4 py-2 font-medium text-gray-800 transition hover:bg-gray-300 disabled:opacity-50">
+                  Falar com analista (CSTI)
+                </button>
+              </div>
+            </>
+          )}
+
+          {r.intencao === "infraestrutura" && (
+            <p className="mt-2 text-sm">Prioridade de SLA: <strong className="text-red-700">Urgente</strong>.</p>
+          )}
+          {r.protocolo && <Protocolo numero={r.protocolo} />}
+          {r.protocolo && <p className="mt-2 text-sm text-gray-500">Acompanhe em “Consultar Chamados”.</p>}
+          <Fonte fonte={r.fonte} />
         </>
       );
-    }
   }
 }
 
 export function Chat() {
   const [mensagens, setMensagens] = useState<Mensagem[]>([{ id: 0, autor: "bot", resposta: { tipo: "saudacao" } }]);
   const [texto, setTexto] = useState("");
-  const [pensando, setPensando] = useState(false);
+  const [ocupado, setOcupado] = useState(false);
   const proximoId = useRef(1);
-  const proximoProtocolo = useRef(493);
+  const ultimaMensagemCar = useRef("");
   const fimRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fimRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [mensagens.length, pensando]);
+  }, [mensagens.length, ocupado]);
 
-  const novoId = () => proximoId.current++;
-  const novoProtocolo = () => `INC-${String(proximoProtocolo.current++).padStart(4, "0")}`;
-  const responder = (resposta: RespostaBot) => setMensagens((m) => [...m, { id: novoId(), autor: "bot", resposta }]);
+  const responder = (resposta: RespostaBot) => setMensagens((m) => [...m, { id: proximoId.current++, autor: "bot", resposta }]);
+
+  async function executar(acao: () => Promise<RespostaBot>) {
+    setOcupado(true);
+    try {
+      responder(await acao());
+    } catch {
+      responder({ tipo: "erro", texto: ERRO_PADRAO });
+    } finally {
+      setOcupado(false);
+    }
+  }
 
   function enviar(mensagem: string) {
     const limpo = mensagem.trim();
-    if (!limpo || pensando) return;
-    setMensagens((m) => [...m, { id: novoId(), autor: "usuario", texto: limpo }]);
+    if (!limpo || ocupado) return;
+    setMensagens((m) => [...m, { id: proximoId.current++, autor: "usuario", texto: limpo }]);
     setTexto("");
-    setPensando(true);
-    setTimeout(() => {
-      const classificacao = classificar(limpo);
-      responder({ tipo: "classificacao", classificacao, protocolo: novoProtocolo() });
-      setPensando(false);
-    }, ATRASO_RESPOSTA_MS);
+    executar(async () => {
+      const { status, dados } = await postJson<RespostaChat>("/api/chat", { mensagem: limpo });
+      if (status !== 200) return { tipo: "erro", texto: dados.erro ?? ERRO_PADRAO };
+      if (dados.intencao === "pop_car") ultimaMensagemCar.current = limpo;
+      return { tipo: "analise", intencao: dados.intencao as Intencao, texto: dados.resposta, protocolo: dados.protocolo, fonte: dados.fonte };
+    });
+  }
+
+  function sincronizarCar() {
+    executar(async () => {
+      const { status, dados } = await postJson<{ ok?: boolean; liberaEm?: string }>("/api/car/sync", {});
+      if (status === 200) return { tipo: "sync_ok" };
+      if (status === 429 && dados.liberaEm) return { tipo: "sync_bloqueada", liberaEm: Date.parse(dados.liberaEm) };
+      return { tipo: "erro", texto: dados.erro ?? ERRO_PADRAO };
+    });
+  }
+
+  function chamarAnalista() {
+    executar(async () => {
+      const relato = ultimaMensagemCar.current || "Erro no CAR";
+      const { status, dados } = await postJson<{ protocolo?: string }>("/api/chamados", {
+        assunto: "Erro no CAR: atendimento com analista",
+        descricao: `Pedido feito pelo Assistente IA. Relato do usuário: ${relato}`,
+        categoria: "CSTI",
+      });
+      if (status === 201 && dados.protocolo) return { tipo: "encaminhado_analista", protocolo: dados.protocolo };
+      return { tipo: "erro", texto: dados.erro ?? ERRO_PADRAO };
+    });
   }
 
   function aoEnviar(e: FormEvent) {
     e.preventDefault();
     enviar(texto);
-  }
-
-  function sincronizarCar() {
-    responder(tentarSincronizarCar());
   }
 
   return (
@@ -250,11 +229,7 @@ export function Chat() {
             </Balao>
           ) : (
             <Balao key={m.id} autor="bot">
-              <ConteudoBot
-                r={m.resposta}
-                aoSincronizar={sincronizarCar}
-                aoChamarAnalista={() => responder({ tipo: "encaminhado_analista", protocolo: novoProtocolo() })}
-              />
+              <ConteudoBot r={m.resposta} ocupado={ocupado} aoSincronizar={sincronizarCar} aoChamarAnalista={chamarAnalista} />
             </Balao>
           ),
         )}
@@ -273,7 +248,7 @@ export function Chat() {
           </div>
         )}
 
-        {pensando && (
+        {ocupado && (
           <Balao autor="bot">
             <span className="flex gap-1" aria-label="O assistente está digitando">
               <span className="size-2 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s]" />
@@ -287,7 +262,7 @@ export function Chat() {
 
       <div className="border-t border-gray-200 bg-white p-3 sm:p-4">
         <form onSubmit={aoEnviar} className="mx-auto flex max-w-4xl items-center gap-2 sm:gap-3">
-          <button type="button" disabled title="Anexos chegam na Sprint 3" aria-label="Anexar arquivo (em breve)" className="p-2 text-gray-300">
+          <button type="button" disabled title="Anexos em breve" aria-label="Anexar arquivo (em breve)" className="p-2 text-gray-300">
             <Paperclip className="size-5" aria-hidden />
           </button>
           <label htmlFor="mensagem" className="sr-only">Descreva seu problema</label>
@@ -302,7 +277,7 @@ export function Chat() {
           />
           <button
             type="submit"
-            disabled={!texto.trim() || pensando}
+            disabled={!texto.trim() || ocupado}
             aria-label="Enviar mensagem"
             className="flex size-12 shrink-0 items-center justify-center rounded-full bg-brand-primary text-white shadow-md transition hover:bg-brand-accent disabled:opacity-50"
           >
