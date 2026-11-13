@@ -31,7 +31,7 @@ export const SPRINTS: Sprint[] = [
     numero: 3,
     titulo: "Cérebro do agente (back-end)",
     entrega: "Supabase com RLS, IA Gemini com fallback para regras, SLA calculado e limite de 24h do CAR no servidor.",
-    status: "em_andamento",
+    status: "concluida",
   },
   {
     numero: 4,

@@ -6,7 +6,8 @@ Central de suporte de TI com assistente de IA nível 1: resolve problemas conhec
 
 - **Next.js 16** (App Router) + **TypeScript**
 - **Tailwind CSS 4**: layout responsivo
-- **Supabase**: banco e autenticação (Sprint 3)
+- **Supabase**: banco Postgres com RLS (só o servidor acessa)
+- **Gemini** (`gemini-3.5-flash-lite`, plano gratuito): IA do assistente, com fallback para regras locais
 - **Vercel**: hospedagem (Sprint 4)
 
 ## Rodar localmente
@@ -17,7 +18,21 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Abra http://localhost:3000.
+Abra http://localhost:3000. Sem as chaves, o sistema funciona com dados de exemplo e regras locais.
+
+### Variáveis de ambiente (`.env.local`)
+
+| Variável | Onde pegar |
+|---|---|
+| `SUPABASE_URL`, `SUPABASE_SECRET_KEY` | Supabase > Project Settings > API Keys (chave **secreta**) |
+| `GEMINI_API_KEY` | https://aistudio.google.com/apikey (ou rode `scripts/definir-chave-gemini.ps1`, que grava sem exibir) |
+| `GEMINI_MODEL` | Opcional; padrão `gemini-3.5-flash-lite` |
+
+O schema do banco está em `supabase/migrations/`.
+
+## Como a IA decide
+
+A IA **interpreta e redige**; o **código decide** setor e prioridade pelas regras de SLA. Se o Gemini falhar, demorar mais de 8s ou estiver sem chave, as regras locais assumem e o chat mostra quem respondeu. A mensagem do usuário é tratada como dado (proteção contra *prompt injection*).
 
 | Comando | O que faz |
 |---|---|
@@ -70,5 +85,5 @@ src/types/       tipos compartilhados
 | 0 | Protótipo HTML (`docs/prototipo.html`) | ✅ |
 | 1 | Setup Next.js, Tailwind, Git, rota de saúde | ✅ |
 | 2 | Telas do protótipo em React, roteamento testado, Saúde ao vivo | ✅ |
-| 3 | Supabase + API da IA com regras de SLA | ⏳ |
+| 3 | Supabase com RLS, IA Gemini com fallback, SLA no servidor | ✅ |
 | 4 | Testes e deploy na Vercel | ⏳ |
