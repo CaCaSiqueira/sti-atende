@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "STI Atende | SEMA-MT",
+  title: { default: "STI Atende | SEMA-MT", template: "%s | STI Atende" },
   description: "Central de suporte de TI da SEMA-MT com assistente de IA",
 };
 

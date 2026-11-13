@@ -1,11 +1,14 @@
 /**
  * Verificações de saúde do STI Atende.
- * Usado pela rota /api/health e, a partir da Sprint 2, pela tela "Saúde do Sistema".
+ * Usado pela rota /api/health e pela tela "Saúde do Sistema".
  */
 
 export type StatusVerificacao = "ok" | "degradado" | "falha" | "nao_configurado";
 
+export type IdVerificacao = "app" | "banco" | "ia" | "sema";
+
 export interface Verificacao {
+  id: IdVerificacao;
   nome: string;
   status: StatusVerificacao;
   latenciaMs: number | null;
@@ -19,6 +22,7 @@ export interface RelatorioSaude {
   ambiente: string;
   geradoEm: string;
   uptimeSegundos: number;
+  memoriaMB: number;
   verificacoes: Verificacao[];
 }
 
@@ -36,35 +40,42 @@ async function medir(url: string, init?: RequestInit): Promise<{ ok: boolean; ms
 }
 
 function aplicacao(): Verificacao {
-  return { nome: "Aplicação (Next.js)", status: "ok", latenciaMs: 0, detalhe: "Servidor respondendo" };
+  return { id: "app", nome: "Aplicação (Next.js)", status: "ok", latenciaMs: 0, detalhe: "Servidor respondendo" };
 }
 
 async function bancoDeDados(): Promise<Verificacao> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const chave = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const nome = "Banco de dados (Supabase)";
+  const base = { id: "banco", nome: "Banco de dados (Supabase)" } as const;
   if (!url || !chave) {
-    return { nome, status: "nao_configurado", latenciaMs: null, detalhe: "Será conectado na Sprint 3" };
+    return { ...base, status: "nao_configurado", latenciaMs: null, detalhe: "Será conectado na Sprint 3" };
   }
   const r = await medir(`${url}/auth/v1/health`, { headers: { apikey: chave } });
   if (!r.ok) {
-    return { nome, status: "falha", latenciaMs: r.ms, detalhe: r.erro === "TimeoutError" ? "Sem resposta em 3s" : `HTTP ${r.codigo ?? r.erro}` };
+    return { ...base, status: "falha", latenciaMs: r.ms, detalhe: r.erro === "TimeoutError" ? "Sem resposta em 3s" : `HTTP ${r.codigo ?? r.erro}` };
   }
-  return {
-    nome,
-    status: r.ms > LATENCIA_LENTA_MS ? "degradado" : "ok",
-    latenciaMs: r.ms,
-    detalhe: r.ms > LATENCIA_LENTA_MS ? "Respondendo devagar" : "Conectado",
-  };
+  const lento = r.ms > LATENCIA_LENTA_MS;
+  return { ...base, status: lento ? "degradado" : "ok", latenciaMs: r.ms, detalhe: lento ? "Respondendo devagar" : "Conectado" };
 }
 
 function assistenteIA(): Verificacao {
   const configurado = Boolean(process.env.AI_API_KEY);
   return {
+    id: "ia",
     nome: "Assistente IA",
     status: configurado ? "ok" : "nao_configurado",
     latenciaMs: null,
-    detalhe: configurado ? `Provedor: ${process.env.AI_PROVIDER ?? "padrão"}` : "Será conectado na Sprint 3",
+    detalhe: configurado ? `Provedor: ${process.env.AI_PROVIDER ?? "padrão"}` : "Regras locais ativas; modelo de IA na Sprint 3",
+  };
+}
+
+function integracaoSema(): Verificacao {
+  return {
+    id: "sema",
+    nome: "Integração SEMA (SIGPAS/CAR)",
+    status: "nao_configurado",
+    latenciaMs: null,
+    detalhe: "Depende de acesso à rede interna da SEMA",
   };
 }
 
@@ -76,7 +87,7 @@ function statusGeral(vs: Verificacao[]): StatusVerificacao {
 }
 
 export async function gerarRelatorioSaude(): Promise<RelatorioSaude> {
-  const verificacoes = [aplicacao(), await bancoDeDados(), assistenteIA()];
+  const verificacoes = [aplicacao(), await bancoDeDados(), assistenteIA(), integracaoSema()];
   return {
     status: statusGeral(verificacoes),
     versao: process.env.npm_package_version ?? "0.1.0",
@@ -84,6 +95,7 @@ export async function gerarRelatorioSaude(): Promise<RelatorioSaude> {
     ambiente: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "desconhecido",
     geradoEm: new Date().toISOString(),
     uptimeSegundos: Math.round(process.uptime()),
+    memoriaMB: Math.round(process.memoryUsage().rss / 1024 / 1024),
     verificacoes,
   };
 }
