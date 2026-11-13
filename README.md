@@ -1,5 +1,7 @@
 # STI Atende (SEMA-MT)
 
+**No ar:** https://sti-atende.vercel.app
+
 Central de suporte de TI com assistente de IA nível 1: resolve problemas conhecidos via POP ou encaminha o chamado ao setor certo (GATI, CSTI, Infraestrutura) conforme o SLA.
 
 ## Stack (100% gratuita)
@@ -8,7 +10,7 @@ Central de suporte de TI com assistente de IA nível 1: resolve problemas conhec
 - **Tailwind CSS 4**: layout responsivo
 - **Supabase**: banco Postgres com RLS (só o servidor acessa)
 - **Gemini** (`gemini-3.5-flash-lite`, plano gratuito): IA do assistente, com fallback para regras locais
-- **Vercel**: hospedagem (Sprint 4)
+- **Vercel**: hospedagem, funções na região São Paulo (`gru1`), perto do banco
 
 ## Rodar localmente
 
@@ -24,7 +26,8 @@ Abra http://localhost:3000. Sem as chaves, o sistema funciona com dados de exemp
 
 | Variável | Onde pegar |
 |---|---|
-| `SUPABASE_URL`, `SUPABASE_SECRET_KEY` | Supabase > Project Settings > API Keys (chave **secreta**) |
+| `SUPABASE_URL`, `SUPABASE_SECRET_KEY` | Supabase > Project Settings > API Keys (chave **secreta**, só no servidor) |
+| `SUPABASE_PUBLISHABLE_KEY` | Mesma tela (chave **publicável**, usada só para login/sessão) |
 | `GEMINI_API_KEY` | https://aistudio.google.com/apikey (ou rode `scripts/definir-chave-gemini.ps1`, que grava sem exibir) |
 | `GEMINI_MODEL` | Opcional; padrão `gemini-3.5-flash-lite` |
 
@@ -41,15 +44,27 @@ A IA **interpreta e redige**; o **código decide** setor e prioridade pelas regr
 | `npm run lint` | ESLint |
 | `npm run build` | Build de produção |
 
+## Acesso para avaliação
+
+A tela de login tem botões de acesso rápido. As contas são de demonstração, com dados fictícios:
+
+| Perfil | E-mail | Senha | Vê |
+|---|---|---|---|
+| Usuário externo | `externo@example.com` | `Demo-STI-2026` | Assistente IA, Meus Chamados, Novo Chamado |
+| Equipe interna (TI) | `interno@example.com` | `Demo-STI-2026` | Tudo, incluindo Visão Geral e Configurações (Saúde do Sistema) |
+
+O perfil fica em `app_metadata` (só o servidor altera). O `src/proxy.ts` exige login e bloqueia rotas internas para o perfil externo; as APIs respondem 401/403. Recriar as contas: `node --env-file=.env.local scripts/criar-usuarios-demo.mjs`.
+
 ## Telas
 
 | Rota | Tela |
 |---|---|
 | `/assistente` | Assistente IA (entrada padrão) com POP do CAR e roteamento N1 |
-| `/visao-geral` | Indicadores e volume por setor |
-| `/chamados` | Consulta com busca por número, assunto ou solicitante |
+| `/visao-geral` | Indicadores e volume por setor (interno) |
+| `/chamados` | Consulta com busca; o externo vê só os próprios chamados |
 | `/chamados/novo` | Abertura manual com classificação automática |
-| `/configuracoes` | Saúde do Sistema ao vivo (atualiza a cada 15s) + Plano de Entrega |
+| `/configuracoes` | Saúde do Sistema ao vivo (atualiza a cada 15s) + Plano de Entrega (interno) |
+| `/login` | Entrada com acesso rápido às contas de demonstração |
 
 ## Regras de roteamento (SLA)
 
@@ -86,4 +101,4 @@ src/types/       tipos compartilhados
 | 1 | Setup Next.js, Tailwind, Git, rota de saúde | ✅ |
 | 2 | Telas do protótipo em React, roteamento testado, Saúde ao vivo | ✅ |
 | 3 | Supabase com RLS, IA Gemini com fallback, SLA no servidor | ✅ |
-| 4 | Testes e deploy na Vercel | ⏳ |
+| 4 | Login por perfil, deploy na Vercel (São Paulo), testes de permissão | ✅ |

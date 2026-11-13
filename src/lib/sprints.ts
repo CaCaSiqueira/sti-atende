@@ -36,7 +36,7 @@ export const SPRINTS: Sprint[] = [
   {
     numero: 4,
     titulo: "Refinamento e deploy",
-    entrega: "Login (usuário interno e externo), testes finais e publicação na Vercel.",
-    status: "pendente",
+    entrega: "Login por perfil (interno e externo) com proxy, deploy na Vercel em São Paulo e testes de permissão.",
+    status: "concluida",
   },
 ];

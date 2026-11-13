@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { obterUsuario } from "@/lib/auth";
 import { criarChamado } from "@/lib/chamados";
 import { ipDaRequisicao, permitir } from "@/lib/limite";
 import { classificar, rotearIntencao } from "@/lib/roteamento";
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
   const prioridade = categoria ? PRIORIDADE_POR_CATEGORIA[categoria] : auto.prioridade;
 
   try {
+    const usuario = await obterUsuario();
     const chamado = await criarChamado({
       assunto,
       descricao,
@@ -42,6 +44,8 @@ export async function POST(req: Request) {
       prioridade,
       origem: "manual",
       classificadoPor: categoria ? "usuario" : "regras",
+      solicitante: usuario?.nome,
+      solicitanteId: usuario?.id,
     });
     return Response.json({ protocolo: chamado.id, setor: chamado.setor, classificadoAutomaticamente: !categoria }, { status: 201 });
   } catch (e) {

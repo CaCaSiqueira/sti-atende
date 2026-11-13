@@ -1,5 +1,6 @@
 import "server-only";
 import type { Chamado, Indicadores, Prioridade, Setor, StatusChamado } from "../types/chamado";
+import type { Usuario } from "./perfil";
 import { calcularIndicadores } from "./sla";
 import { obterSupabase } from "./supabase";
 
@@ -17,6 +18,7 @@ export interface NovoChamado {
   origem: "chat" | "manual";
   classificadoPor: "ia" | "regras" | "usuario";
   solicitante?: string;
+  solicitanteId?: string;
 }
 
 interface LinhaChamado {
@@ -57,10 +59,13 @@ const EXEMPLO: (Chamado & { resolvidoEm: string | null })[] = [
 let proximoNumeroMemoria = 500;
 
 // ---------- API pública ----------
-export async function listarChamados(): Promise<Chamado[]> {
+/** Interno vê todos os chamados; externo vê só os que abriu. */
+export async function listarChamados(usuario: Usuario | null): Promise<Chamado[]> {
   const db = obterSupabase();
   if (!db) return [...EXEMPLO].sort((a, b) => b.abertoEm.localeCompare(a.abertoEm));
-  const { data, error } = await db.from("chamados").select(COLUNAS).order("aberto_em", { ascending: false }).limit(200);
+  let consulta = db.from("chamados").select(COLUNAS).order("aberto_em", { ascending: false }).limit(200);
+  if (usuario?.perfil === "externo") consulta = consulta.eq("solicitante_id", usuario.id);
+  const { data, error } = await consulta;
   if (error) throw new Error(`Falha ao listar chamados: ${error.message}`);
   return (data as LinhaChamado[]).map(mapear);
 }
@@ -106,7 +111,8 @@ export async function criarChamado(novo: NovoChamado): Promise<Chamado> {
       prioridade: novo.prioridade,
       origem: novo.origem,
       classificado_por: novo.classificadoPor,
-      ...(novo.solicitante ? { solicitante: novo.solicitante } : {}),
+      ...(novo.solicitante ? { solicitante: novo.solicitante.slice(0, 120) } : {}),
+      ...(novo.solicitanteId ? { solicitante_id: novo.solicitanteId } : {}),
     })
     .select(COLUNAS)
     .single();

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { obterUsuario } from "@/lib/auth";
 import { criarChamado } from "@/lib/chamados";
 import { analisarMensagem } from "@/lib/ia";
 import { ipDaRequisicao, permitir } from "@/lib/limite";
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
   const { mensagem } = entrada.data;
 
   try {
+    const usuario = await obterUsuario();
     const analise = await analisarMensagem(mensagem);
 
     // CAR tem POP de autoatendimento: o chamado só nasce se o usuário pedir um analista.
@@ -37,6 +39,8 @@ export async function POST(req: Request) {
             prioridade: analise.prioridade,
             origem: "chat",
             classificadoPor: analise.fonte,
+            solicitante: usuario?.nome,
+            solicitanteId: usuario?.id,
           });
 
     const corpo: RespostaChat = {
