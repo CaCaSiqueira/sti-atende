@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STI Atende - Protótipo SEMA-MT</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            dark: '#1a202c',
+                            primary: '#2b6cb0',
+                            accent: '#3182ce',
+                            light: '#ebf8ff'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .chat-msg { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-800 flex h-screen overflow-hidden">
+
+    <!-- Sidebar -->
+    <aside class="w-64 bg-brand-dark text-white flex flex-col shadow-xl z-10">
+        <div class="p-6 border-b border-gray-700 flex items-center space-x-3">
+            <i class="fas fa-leaf text-green-400 text-2xl"></i>
+            <div>
+                <h1 class="text-xl font-bold tracking-wider uppercase">STI Atende</h1>
+                <p class="text-xs text-gray-400">SEMA-MT</p>
+            </div>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <button onclick="switchTab('dashboard')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition text-left" id="btn-dashboard">
+                <i class="fas fa-chart-pie w-5"></i> <span>Visão Geral</span>
+            </button>
+            <button onclick="switchTab('consulta')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition text-left" id="btn-consulta">
+                <i class="fas fa-search w-5"></i> <span>Consultar Chamados</span>
+            </button>
+            <button onclick="switchTab('novo-chamado')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition text-left" id="btn-novo-chamado">
+                <i class="fas fa-plus-circle w-5"></i> <span>Novo Chamado Manual</span>
+            </button>
+            <button onclick="switchTab('chat')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg bg-brand-primary hover:bg-brand-accent transition text-left shadow-lg" id="btn-chat">
+                <i class="fas fa-robot w-5"></i> <span>Assistente IA</span>
+            </button>
+            
+            <div class="pt-6 mt-6 border-t border-gray-700">
+                <p class="text-xs text-gray-500 uppercase tracking-wider px-4 mb-2">Administração</p>
+                <button onclick="switchTab('config')" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition text-left text-gray-300" id="btn-config">
+                    <i class="fas fa-cogs w-5"></i> <span>Configurações</span>
+                </button>
+            </div>
+        </nav>
+        <div class="p-4 border-t border-gray-700 text-sm flex items-center space-x-3">
+            <div class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
+                <i class="fas fa-user"></i>
+            </div>
+            <div>
+                <p class="font-semibold">Usuário Interno</p>
+                <p class="text-xs text-gray-400">Analista SEMA</p>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto bg-gray-50">
+        
+        <!-- VISÃO GERAL (DASHBOARD) -->
+        <div id="dashboard" class="tab-content p-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Visão Geral - Indicadores</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-blue-500">
+                    <h3 class="text-gray-500 text-sm font-semibold uppercase">Chamados Abertos</h3>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">142</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-green-500">
+                    <h3 class="text-gray-500 text-sm font-semibold uppercase">Resolvidos (Hoje)</h3>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">38</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-yellow-500">
+                    <h3 class="text-gray-500 text-sm font-semibold uppercase">Aguardando Terceiros</h3>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">15</p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 border-l-4 border-l-red-500">
+                    <h3 class="text-gray-500 text-sm font-semibold uppercase">SLA Violado</h3>
+                    <p class="text-3xl font-bold text-gray-800 mt-2">3</p>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Volume por Setor</h3>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><span class="font-medium">CSTI (Sistemas)</span><span>65%</span></div>
+                        <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-blue-600 h-2 rounded-full" style="width: 65%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><span class="font-medium">GATI (Hardware)</span><span>25%</span></div>
+                        <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-purple-600 h-2 rounded-full" style="width: 25%"></div></div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-sm mb-1"><span class="font-medium">Infraestrutura</span><span>10%</span></div>
+                        <div class="w-full bg-gray-200 rounded-full h-2"><div class="bg-orange-500 h-2 rounded-full" style="width: 10%"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONSULTA DE CHAMADOS -->
+        <div id="consulta" class="tab-content p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800">Consulta de Chamados</h2>
+                <div class="relative w-96">
+                    <input type="text" placeholder="Buscar por assunto ou número..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-primary">
+                    <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 text-sm uppercase tracking-wider border-b border-gray-200">
+                            <th class="p-4 font-medium">Nº</th>
+                            <th class="p-4 font-medium">Assunto</th>
+                            <th class="p-4 font-medium">Solicitante</th>
+                            <th class="p-4 font-medium">Setor Resp.</th>
+                            <th class="p-4 font-medium">Com Quem Está</th>
+                            <th class="p-4 font-medium">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm divide-y divide-gray-100">
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-4 font-semibold text-brand-primary">#INC-0492</td>
+                            <td class="p-4">Erro de Sincronização CAR</td>
+                            <td class="p-4">João Henrique</td>
+                            <td class="p-4"><span class="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs font-semibold">CSTI</span></td>
+                            <td class="p-4">Thiago Andrade</td>
+                            <td class="p-4"><span class="px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">Em Análise</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-4 font-semibold text-brand-primary">#INC-0491</td>
+                            <td class="p-4">Monitor piscando / Cabo quebrado</td>
+                            <td class="p-4">Maria Cristina</td>
+                            <td class="p-4"><span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">GATI</span></td>
+                            <td class="p-4">Pitagoras</td>
+                            <td class="p-4"><span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">Resolvido</span></td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 transition">
+                            <td class="p-4 font-semibold text-brand-primary">#REQ-0102</td>
+                            <td class="p-4">Queda de internet no setor</td>
+                            <td class="p-4">Carina B. Siqueira</td>
+                            <td class="p-4"><span class="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs font-semibold">Infraestrutura</span></td>
+                            <td class="p-4">Jadiael</td>
+                            <td class="p-4"><span class="px-2 py-1 bg-red-100 text-red-800 rounded text-xs font-semibold">Urgente</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- NOVO CHAMADO MANUAL -->
+        <div id="novo-chamado" class="tab-content p-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Abertura de Chamado Manual</h2>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-8 max-w-2xl">
+                <form class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Assunto / Resumo</label>
+                        <input type="text" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-primary focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Categoria (Opcional - A IA pode classificar)</label>
+                        <select class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-primary focus:outline-none">
+                            <option>Selecione...</option>
+                            <option>Sistemas (CSTI)</option>
+                            <option>Equipamentos/Hardware (GATI)</option>
+                            <option>Rede/Infraestrutura</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Descrição Detalhada</label>
+                        <textarea rows="4" class="w-full border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-brand-primary focus:outline-none"></textarea>
+                    </div>
+                    <button type="button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition">Abrir Chamado</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- CONFIGURAÇÕES (SAÚDE E PLANO) -->
+        <div id="config" class="tab-content p-8">
+            <h2 class="text-3xl font-bold text-gray-800 mb-6">Configurações do Sistema</h2>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Saúde do Sistema -->
+                <div class="bg-brand-dark text-white rounded-xl shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold"><i class="fas fa-heartbeat text-red-500 mr-2"></i> Saúde do Sistema</h3>
+                        <span class="px-3 py-1 bg-green-900 text-green-400 rounded-full text-xs font-bold border border-green-700">STATUS: OPERACIONAL</span>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center border-b border-gray-700 pb-3">
+                            <span class="text-gray-300"><i class="fas fa-server w-5"></i> Claude IA Engine</span>
+                            <span class="text-green-400 font-mono">24ms <i class="fas fa-check-circle ml-1"></i></span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-gray-700 pb-3">
+                            <span class="text-gray-300"><i class="fas fa-database w-5"></i> Supabase / Banco de Dados</span>
+                            <span class="text-green-400 font-mono">12ms <i class="fas fa-check-circle ml-1"></i></span>
+                        </div>
+                        <div class="flex justify-between items-center border-b border-gray-700 pb-3">
+                            <span class="text-gray-300"><i class="fas fa-plug w-5"></i> Integração SEMA (SIGPAS/CAR)</span>
+                            <span class="text-yellow-400 font-mono">158ms <i class="fas fa-exclamation-circle ml-1"></i></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-300"><i class="fas fa-memory w-5"></i> Uso de Memória (Vercel)</span>
+                            <span class="text-white font-mono">45% (450MB)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Plano de Entrega -->
+                <div class="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+                    <h3 class="text-xl font-bold text-gray-800 mb-6"><i class="fas fa-tasks text-brand-primary mr-2"></i> Plano de Entrega (Sprints)</h3>
+                    
+                    <div class="relative border-l-2 border-brand-primary ml-3 space-y-6">
+                        <div class="pl-6 relative">
+                            <div class="absolute w-4 h-4 bg-green-500 rounded-full -left-[9px] top-1 border-2 border-white"></div>
+                            <h4 class="font-bold text-gray-800">Sprint 0: Protótipo e Arquitetura</h4>
+                            <p class="text-sm text-gray-500 mt-1">Definição visual, regras de negócio e setup inicial. (Concluído)</p>
+                        </div>
+                        <div class="pl-6 relative">
+                            <div class="absolute w-4 h-4 bg-blue-500 rounded-full -left-[9px] top-1 border-2 border-white"></div>
+                            <h4 class="font-bold text-gray-800">Sprint 1 & 2: Setup e Front-end</h4>
+                            <p class="text-sm text-gray-500 mt-1">Vercel, Supabase, Tailwind, Telas Responsivas. (Em andamento)</p>
+                        </div>
+                        <div class="pl-6 relative">
+                            <div class="absolute w-4 h-4 bg-gray-300 rounded-full -left-[9px] top-1 border-2 border-white"></div>
+                            <h4 class="font-bold text-gray-800">Sprint 3: Cérebro do Agente (Back-end)</h4>
+                            <p class="text-sm text-gray-500 mt-1">Roteamento de chamados via NLP (GATI, CSTI, Infra), automação de POPs.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ASSISTENTE IA (CHAT) -->
+        <div id="chat" class="tab-content active h-full flex flex-col">
+            <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow-sm">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800"><i class="fas fa-robot text-brand-primary mr-2"></i> Analista de Suporte IA</h2>
+                    <p class="text-xs text-gray-500">Com raciocínio aprimorado e atendimento humanizado.</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="relative flex h-3 w-3">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                    </span>
+                    <span class="text-sm text-gray-600 font-medium">Online</span>
+                </div>
+            </div>
+            
+            <div id="chat-box" class="flex-1 p-6 overflow-y-auto bg-gray-50 space-y-4">
+                <!-- Greeting -->
+                <div class="flex items-start max-w-3xl chat-msg">
+                    <div class="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white shadow-md flex-shrink-0">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="ml-4 bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-gray-100">
+                        <p class="text-gray-800">Olá! Sou o agente de suporte inteligente do STI Atende. Como posso ajudar você hoje?</p>
+                        <p class="text-sm text-gray-500 mt-2">Você pode descrever seu problema ou solicitar a abertura de um chamado.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="bg-white border-t border-gray-200 p-4">
+                <form id="chat-form" class="max-w-4xl mx-auto flex items-center space-x-3">
+                    <button type="button" class="text-gray-400 hover:text-brand-primary transition p-2">
+                        <i class="fas fa-paperclip text-lg"></i>
+                    </button>
+                    <input type="text" id="chat-input" class="flex-1 bg-gray-100 border-transparent focus:bg-white focus:border-brand-primary focus:ring-0 rounded-full px-6 py-3" placeholder="Ex: 'Erro no CAR', 'Meu computador não liga'...">
+                    <button type="submit" class="bg-brand-primary hover:bg-brand-accent text-white rounded-full w-12 h-12 flex items-center justify-center transition shadow-md">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+                <p class="text-center text-xs text-gray-400 mt-2">A IA pode cometer erros. Em caso de dúvidas complexas, o chamado será roteado para GATI, CSTI ou Infra.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // Mock Chat Logic
+        const chatForm = document.getElementById('chat-form');
+        const chatInput = document.getElementById('chat-input');
+        const chatBox = document.getElementById('chat-box');
+
+        function addUserMessage(text) {
+            const msgHtml = `
+                <div class="flex items-start justify-end max-w-3xl ml-auto chat-msg">
+                    <div class="mr-4 bg-brand-primary text-white p-4 rounded-2xl rounded-tr-none shadow-sm">
+                        <p>${text}</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 shadow-md flex-shrink-0">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            `;
+            chatBox.insertAdjacentHTML('beforeend', msgHtml);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function addBotMessage(htmlContent) {
+            const msgHtml = `
+                <div class="flex items-start max-w-3xl chat-msg">
+                    <div class="w-10 h-10 rounded-full bg-brand-primary flex items-center justify-center text-white shadow-md flex-shrink-0">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="ml-4 bg-white p-4 rounded-2xl rounded-tl-none shadow-sm border border-gray-100">
+                        ${htmlContent}
+                    </div>
+                </div>
+            `;
+            chatBox.insertAdjacentHTML('beforeend', msgHtml);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = chatInput.value.trim();
+            if (!text) return;
+
+            addUserMessage(text);
+            chatInput.value = '';
+
+            // Simulate AI processing
+            setTimeout(() => {
+                const lowerText = text.toLowerCase();
+                
+                // Rule: CAR Error -> POP automated resolution
+                if (lowerText.includes('car') || lowerText.includes('erro no car')) {
+                    addBotMessage(`
+                        <p class="text-gray-800">Identifiquei que você está relatando um erro no sistema <strong>CAR</strong>. Temos um procedimento operacional (POP) conhecido para isso.</p>
+                        <p class="text-gray-800 mt-2">Deseja realizar uma sincronização da base de dados agora?</p>
+                        <div class="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800 flex items-start">
+                            <i class="fas fa-exclamation-triangle mt-1 mr-2"></i>
+                            <div><strong>Atenção ao SLA:</strong> A sincronização só é permitida 1 vez a cada 24 horas para evitar sobrecarga no banco Oracle da SEMA.</div>
+                        </div>
+                        <div class="mt-4 flex space-x-3">
+                            <button class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow-sm transition flex items-center" onclick="alert('Sincronização iniciada com sucesso!')">
+                                <i class="fas fa-sync-alt mr-2"></i> Sincronizar CAR
+                            </button>
+                            <button class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded font-medium transition">
+                                Falar com Analista (CSTI)
+                            </button>
+                        </div>
+                    `);
+                } 
+                // Rule: Hardware -> GATI
+                else if (lowerText.includes('computador') || lowerText.includes('hardware') || lowerText.includes('impressora') || lowerText.includes('monitor')) {
+                    addBotMessage(`
+                        <p class="text-gray-800">Isso parece ser um <strong>problema físico ou de hardware</strong>.</p>
+                        <p class="text-gray-800 mt-2">Estou formatando sua solicitação e direcionando automaticamente para a equipe da <strong>GATI (Gerência de Atendimento Técnico)</strong>.</p>
+                        <p class="text-sm font-mono bg-gray-100 p-2 rounded mt-3">Protocolo gerado: #INC-0493</p>
+                    `);
+                }
+                // Rule: Systems -> CSTI
+                else if (lowerText.includes('sistema') || lowerText.includes('sigpas') || lowerText.includes('travou')) {
+                    addBotMessage(`
+                        <p class="text-gray-800">Problema relacionado a <strong>Sistemas de Tecnologia da Informação</strong> identificado.</p>
+                        <p class="text-gray-800 mt-2">Sua solicitação foi encaminhada para um analista especializado da <strong>CSTI</strong>.</p>
+                        <p class="text-sm text-gray-500 mt-2">Você pode acompanhar o status na aba "Consultar Chamados".</p>
+                    `);
+                }
+                // Rule: Infra -> Infraestrutura
+                else if (lowerText.includes('internet') || lowerText.includes('rede') || lowerText.includes('cabo')) {
+                    addBotMessage(`
+                        <p class="text-gray-800">Isso indica uma falha de <strong>Rede ou Infraestrutura</strong>.</p>
+                        <p class="text-gray-800 mt-2">O alerta de incidente foi enviado para a <strong>Coordenação de Infraestrutura</strong>. Devido à natureza crítica, a prioridade SLA foi ajustada para "Urgente".</p>
+                    `);
+                }
+                // Unknown -> Route to Triagem
+                else {
+                    addBotMessage(`
+                        <p class="text-gray-800">Entendi. Como não há um procedimento automatizado (POP) exato para esta descrição, vou registrar um chamado detalhado e enviar para a <strong>triagem de nível 1</strong>.</p>
+                        <p class="text-gray-800 mt-2">Um analista revisará o assunto e repassará à equipe correta.</p>
+                    `);
+                }
+            }, 800);
+        });
+        
+    </script>
+</body>
+</html>
