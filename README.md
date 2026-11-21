@@ -147,6 +147,8 @@ src/types/       tipos compartilhados
 | 5 | Perfis externo/interno/STI, RP do equipamento, print do erro, atendimento pela STI | 1.1.0 | ✅ |
 | 6 | Histórico do chamado, nota de solução, filtros da STI, banco sempre ativo | 1.2.0 | ✅ |
 | 7 | Limites de requisição no banco, sistema bloqueado sem configuração completa | 1.3.0 | ✅ |
+| 8 | Verificação automática no GitHub e testes do banco (migrações e funções) | 1.4.0 | Planejada |
+| 9 | CAR: regra de 24h atômica, estados da sincronização e aviso de simulação | 1.5.0 | Planejada |
 
 A versão **1.0.0** é a primeira estável: plano de entrega concluído e sistema no ar.
 

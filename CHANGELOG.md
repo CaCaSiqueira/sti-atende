@@ -21,6 +21,11 @@ Sprint 7: proteções de produção. Exige a migração `supabase/migrations/202
 
 - README dizia que os dados de exemplo entram quando o banco cai; na verdade o sistema mostra erro, e agora isso é a regra.
 
+### Planejado
+
+- Sprints 8 (prova de execução dos testes) e 9 (sincronização do CAR confiável) no Plano de Entrega, a partir dos
+  apontamentos da ficha técnica.
+
 ## [1.2.0] - 2026-11-21
 
 Sprint 6: histórico e solução. Exige a migração `supabase/migrations/20261121190000_sprint6.sql` no banco.

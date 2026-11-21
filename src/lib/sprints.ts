@@ -57,4 +57,16 @@ export const SPRINTS: Sprint[] = [
     entrega: "Limites de requisição no banco (valem para todas as instâncias) e sistema bloqueado sem configuração completa.",
     status: "concluida",
   },
+  {
+    numero: 8,
+    titulo: "Prova de execução dos testes",
+    entrega: "Verificação automática no GitHub (testes, tipos, lint, build) e banco de teste que aplica as migrações e testa as funções.",
+    status: "pendente",
+  },
+  {
+    numero: 9,
+    titulo: "Sincronização do CAR confiável",
+    entrega: "Regra de 24h atômica no banco, estados solicitada/em processamento/concluída e aviso de simulação sem a integração real.",
+    status: "pendente",
+  },
 ];
