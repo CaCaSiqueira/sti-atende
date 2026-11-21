@@ -39,4 +39,10 @@ export const SPRINTS: Sprint[] = [
     entrega: "Login por perfil (interno e externo) com proxy, deploy na Vercel em São Paulo e testes de permissão.",
     status: "concluida",
   },
+  {
+    numero: 5,
+    titulo: "Atendimento por perfil",
+    entrega: "Perfis externo, interno e STI; RP do equipamento; print do erro; STI assume e muda o status do chamado.",
+    status: "concluida",
+  },
 ];

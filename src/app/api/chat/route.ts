@@ -3,6 +3,7 @@ import { obterUsuario } from "@/lib/auth";
 import { criarChamado } from "@/lib/chamados";
 import { analisarMensagem } from "@/lib/ia";
 import { ipDaRequisicao, permitir } from "@/lib/limite";
+import { chamadoInterno } from "@/lib/permissoes";
 
 const Entrada = z.object({ mensagem: z.string().trim().min(1).max(1000) });
 
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
             prioridade: analise.prioridade,
             origem: "chat",
             classificadoPor: analise.fonte,
+            interno: chamadoInterno(usuario?.perfil),
             solicitante: usuario?.nome,
             solicitanteId: usuario?.id,
           });

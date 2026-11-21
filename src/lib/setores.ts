@@ -1,4 +1,4 @@
-import type { Prioridade, Setor, StatusChamado } from "../types/chamado";
+import type { Prioridade, Setor, StatusChamado, StatusUsuario } from "../types/chamado";
 
 /** Rótulos e cores de cada setor, usados em badges, gráficos e mensagens da IA. */
 export const SETORES: Record<Setor, { sigla: string; nome: string; badge: string; barra: string }> = {
@@ -34,6 +34,18 @@ export const STATUS: Record<StatusChamado, { rotulo: string; badge: string }> = 
   aguardando_terceiros: { rotulo: "Aguardando terceiros", badge: "bg-amber-100 text-amber-800" },
   resolvido: { rotulo: "Resolvido", badge: "bg-green-100 text-green-800" },
 };
+
+/** Status que os usuários (externo e interno) veem. */
+export const STATUS_USUARIO: Record<StatusUsuario, { rotulo: string; badge: string }> = {
+  aberto: STATUS.aberto,
+  em_analise: STATUS.em_analise,
+  resolvido: STATUS.resolvido,
+};
+
+/** "Aguardando terceiros" é detalhe da operação da STI: para o usuário, o chamado segue em análise. */
+export function statusParaUsuario(status: StatusChamado): StatusUsuario {
+  return status === "aguardando_terceiros" ? "em_analise" : status;
+}
 
 export const PRIORIDADES: Record<Prioridade, { rotulo: string; badge: string }> = {
   baixa: { rotulo: "Baixa", badge: "bg-gray-100 text-gray-700" },

@@ -2,23 +2,30 @@
 
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
-import { Building2, UserRound } from "lucide-react";
+import { Building2, Headset, UserRound } from "lucide-react";
 
 /** Contas de demonstração para a avaliação (permissões limitadas, dados fictícios). */
 const DEMOS = [
   {
     rotulo: "Usuário externo",
-    descricao: "Abre chamados e acompanha os seus",
+    descricao: "Abre chamados, anexa prints e acompanha os seus",
     email: "externo@example.com",
     senha: "Demo-STI-2026",
     icone: UserRound,
   },
   {
-    rotulo: "Equipe interna (TI)",
-    descricao: "Vê todos os chamados, indicadores e saúde",
+    rotulo: "Usuário interno (servidor da SEMA)",
+    descricao: "Como o externo, e informa o RP do equipamento",
     email: "interno@example.com",
     senha: "Demo-STI-2026",
     icone: Building2,
+  },
+  {
+    rotulo: "Equipe da STI",
+    descricao: "Todos os chamados: assume, muda status, indicadores",
+    email: "sti@example.com",
+    senha: "Demo-STI-2026",
+    icone: Headset,
   },
 ];
 
@@ -83,7 +90,7 @@ export function FormLogin() {
 
       <div className="mt-6 border-t border-gray-200 pt-6">
         <p className="mb-3 text-sm font-semibold text-gray-700">Acesso de demonstração (avaliação)</p>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3">
           {DEMOS.map((d) => {
             const Icone = d.icone;
             return (

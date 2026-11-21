@@ -30,8 +30,9 @@ Abra http://localhost:3000. Sem as chaves, o sistema funciona com dados de exemp
 | `SUPABASE_PUBLISHABLE_KEY` | Mesma tela (chave **publicável**, usada só para login/sessão) |
 | `GEMINI_API_KEY` | https://aistudio.google.com/apikey (ou rode `scripts/definir-chave-gemini.ps1`, que grava sem exibir) |
 | `GEMINI_MODEL` | Opcional; padrão `gemini-3.5-flash-lite` |
+| `PERFIL_LOCAL` | Só sem Supabase: simula um usuário logado (`externo`, `servidor` ou `sti`) para testar as telas de cada perfil |
 
-O schema do banco está em `supabase/migrations/`.
+O schema do banco está em `supabase/migrations/`. Os prints do erro ficam no Storage do Supabase, no bucket privado `prints` (criado pela migração da Sprint 5).
 
 ## Como a IA decide
 
@@ -39,7 +40,7 @@ A IA **interpreta e redige**; o **código decide** setor e prioridade pelas regr
 
 | Comando | O que faz |
 |---|---|
-| `npm test` | Testes das regras de roteamento (Node test runner, sem dependências) |
+| `npm test` | Testes de roteamento, SLA, permissões, imagens e versão (Node test runner, sem dependências) |
 | `npm run typecheck` | Checagem de tipos |
 | `npm run lint` | ESLint |
 | `npm run build` | Build de produção |
@@ -52,19 +53,37 @@ A tela de login tem botões de acesso rápido. As contas são de demonstração,
 | Perfil | E-mail | Senha | Vê |
 |---|---|---|---|
 | Usuário externo | `externo@example.com` | `Demo-STI-2026` | Assistente IA, Meus Chamados, Novo Chamado |
-| Equipe interna (TI) | `interno@example.com` | `Demo-STI-2026` | Tudo, incluindo Visão Geral e Configurações (Saúde do Sistema) |
+| Usuário interno (servidor da SEMA) | `interno@example.com` | `Demo-STI-2026` | O mesmo do externo, e informa o RP do equipamento |
+| Equipe da STI | `sti@example.com` | `Demo-STI-2026` | Tudo: todos os chamados, Visão Geral e Configurações (Saúde do Sistema) |
 
-O perfil fica em `app_metadata` (só o servidor altera). O `src/proxy.ts` exige login e bloqueia rotas internas para o perfil externo; as APIs respondem 401/403. Recriar as contas: `node --env-file=.env.local scripts/criar-usuarios-demo.mjs`.
+O perfil fica em `app_metadata` (só o servidor altera), com os valores `externo`, `servidor` ou `sti`. O nome antigo `interno` (equipe de TI até a v1.0.0) continua valendo como `sti`. O `src/proxy.ts` exige login e bloqueia as rotas da STI para os demais; as APIs respondem 401/403. Recriar as contas: `node --env-file=.env.local scripts/criar-usuarios-demo.mjs`.
+
+## Perfis e permissões
+
+| Ação | Usuário externo | Usuário interno | Equipe da STI |
+|---|---|---|---|
+| Ver chamados | Só os que abriu | Só os que abriu | Todos |
+| Colunas da lista | Nº, assunto, solicitante, status | Nº, assunto, solicitante, status | + setor, responsável e RP |
+| Status | Aberto / Em análise / Resolvido | Aberto / Em análise / Resolvido | Todos, incluindo "Aguardando terceiros" |
+| Anexar print do erro (até 3) | Enquanto não resolvido | Enquanto não resolvido | Sempre |
+| Informar o RP do equipamento | Não | No próprio chamado de hardware | Sempre |
+| Assumir chamado e mudar status | Não | Não | Sim (ao mudar ou concluir, pode incluir RP e print) |
+
+- **RP** é o número de patrimônio do equipamento: só números, opcional.
+- **Chamado interno** é o aberto por servidor da SEMA ou pela STI; aparece marcado para a STI.
+- As regras ficam em `src/lib/permissoes.ts` e valem nas telas e nas APIs. Chamado de outra pessoa responde "não encontrado".
+- **Prints:** PNG, JPG ou WebP, conferidos pelos bytes do arquivo (não pela extensão). Imagens grandes são reduzidas no navegador antes do envio. Ficam em bucket privado e só abrem por `/api/anexos/[id]`, para quem pode ver o chamado.
 
 ## Telas
 
 | Rota | Tela |
 |---|---|
 | `/assistente` | Assistente IA (entrada padrão) com POP do CAR e roteamento N1 |
-| `/visao-geral` | Indicadores e volume por setor (interno) |
-| `/chamados` | Consulta com busca; o externo vê só os próprios chamados |
-| `/chamados/novo` | Abertura manual com classificação automática |
-| `/configuracoes` | Saúde do Sistema ao vivo (atualiza a cada 15s) + Plano de Entrega (interno) |
+| `/visao-geral` | Indicadores e volume por setor (STI) |
+| `/chamados` | Meus Chamados (usuários) ou Consulta de Chamados (STI), com busca |
+| `/chamados/[id]` | Página do chamado: dados, prints do erro e, para a STI, Assumir e Status (com RP e print) |
+| `/chamados/novo` | Abertura manual com classificação automática, RP (hardware, usuário interno) e print do erro |
+| `/configuracoes` | Saúde do Sistema ao vivo (atualiza a cada 15s) + Plano de Entrega (STI) |
 | `/login` | Entrada com acesso rápido às contas de demonstração |
 
 ## Regras de roteamento (SLA)
@@ -103,6 +122,7 @@ src/types/       tipos compartilhados
 | 2 | Telas do protótipo em React, roteamento testado, Saúde ao vivo | 0.2.0 | ✅ |
 | 3 | Supabase com RLS, IA Gemini com fallback, SLA no servidor | 0.3.0 | ✅ |
 | 4 | Login por perfil, deploy na Vercel (São Paulo), testes de permissão | 0.4.0 | ✅ |
+| 5 | Perfis externo/interno/STI, RP do equipamento, print do erro, atendimento pela STI | 1.1.0 | ✅ |
 
 A versão **1.0.0** é a primeira estável: plano de entrega concluído e sistema no ar.
 

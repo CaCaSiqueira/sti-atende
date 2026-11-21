@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { obterUsuario } from "@/lib/auth";
+import { sessaoDaApi } from "@/lib/auth";
 import { criarChamado } from "@/lib/chamados";
 import { ipDaRequisicao, permitir } from "@/lib/limite";
+import { RP_REGEX, aceitaRPNaAbertura, chamadoInterno } from "@/lib/permissoes";
 import { classificar, rotearIntencao } from "@/lib/roteamento";
 import type { Prioridade } from "@/types/chamado";
 
@@ -16,9 +17,10 @@ const Entrada = z.object({
   assunto: z.string().trim().min(1).max(200),
   descricao: z.string().trim().min(10).max(4000),
   categoria: z.enum(["CSTI", "GATI", "INFRA"]).optional(),
+  rp: z.string().trim().regex(RP_REGEX, "Use só números.").optional(),
 });
 
-/** Abertura manual (formulário) ou pedido de analista vindo do chat. */
+/** Abertura manual (formulário) ou pedido de analista vindo do chat. Os prints vão depois, em /api/chamados/[id]/anexos. */
 export async function POST(req: Request) {
   if (!permitir(`chamados:${ipDaRequisicao(req)}`, 10, 60_000)) {
     return Response.json({ erro: "Muitas solicitações em pouco tempo. Aguarde um minuto." }, { status: 429 });
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
   if (!entrada.success) {
     return Response.json({ erro: "Dados inválidos.", campos: entrada.error.flatten().fieldErrors }, { status: 400 });
   }
-  const { assunto, descricao, categoria } = entrada.data;
+  const { assunto, descricao, categoria, rp } = entrada.data;
 
   // Categoria escolhida pelo usuário prevalece; senão, as regras de SLA classificam.
   const auto = classificar(`${assunto} ${descricao}`);
@@ -36,7 +38,14 @@ export async function POST(req: Request) {
   const prioridade = categoria ? PRIORIDADE_POR_CATEGORIA[categoria] : auto.prioridade;
 
   try {
-    const usuario = await obterUsuario();
+    const sessao = await sessaoDaApi();
+    if ("negado" in sessao) return sessao.negado;
+    const { usuario } = sessao;
+    const perfil = usuario?.perfil ?? null;
+    if (rp && !aceitaRPNaAbertura(perfil, setor)) {
+      return Response.json({ erro: "O RP do equipamento vale só para chamados de hardware de usuários internos." }, { status: 400 });
+    }
+
     const chamado = await criarChamado({
       assunto,
       descricao,
@@ -44,6 +53,8 @@ export async function POST(req: Request) {
       prioridade,
       origem: "manual",
       classificadoPor: categoria ? "usuario" : "regras",
+      interno: chamadoInterno(perfil),
+      rpEquipamento: rp,
       solicitante: usuario?.nome,
       solicitanteId: usuario?.id,
     });

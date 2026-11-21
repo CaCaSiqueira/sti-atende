@@ -1,7 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
-import { perfilDe, type Usuario } from "./perfil";
+import { PERFIS, ehPerfil, perfilDe, type Usuario } from "./perfil";
 
 /**
  * Sessão do usuário (Supabase Auth via cookies).
@@ -28,9 +28,32 @@ export async function clienteAuth() {
   });
 }
 
+/**
+ * Só no desenvolvimento sem Supabase: PERFIL_LOCAL=externo|servidor|sti simula um usuário logado
+ * para testar as telas de cada perfil. Com o login configurado, a variável é ignorada.
+ */
+function usuarioLocal(): Usuario | null {
+  const perfil = process.env.PERFIL_LOCAL;
+  if (!ehPerfil(perfil)) return null;
+  return { id: `local-${perfil}`, nome: `Teste local (${PERFIS[perfil].rotulo})`, email: "", perfil };
+}
+
+/**
+ * Para rotas de API: o usuário logado, ou uma resposta 401 quando o login está configurado e não há sessão.
+ * O proxy já barra quem não está logado; esta checagem é a segunda camada.
+ * `usuario: null` só acontece sem login configurado (desenvolvimento local).
+ */
+export async function sessaoDaApi(): Promise<{ usuario: Usuario | null } | { negado: Response }> {
+  const usuario = await obterUsuario();
+  if (authConfigurada() && !usuario) {
+    return { negado: Response.json({ erro: "Faça login para continuar." }, { status: 401 }) };
+  }
+  return { usuario };
+}
+
 /** Usuário logado, ou null. Valida o token no Supabase (getUser), não só lê o cookie. */
 export async function obterUsuario(): Promise<Usuario | null> {
-  if (!authConfigurada()) return null;
+  if (!authConfigurada()) return usuarioLocal();
   const supabase = await clienteAuth();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;

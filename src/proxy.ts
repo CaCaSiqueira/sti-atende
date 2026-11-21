@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
-import { ehPublica, exigeInterno, perfilDe } from "@/lib/perfil";
+import { ehPublica, exigeSti, perfilDe } from "@/lib/perfil";
 
 /**
  * Proxy (antigo middleware): renova a sessão do Supabase e protege as rotas.
  * - Sem login -> /login (APIs respondem 401).
- * - Perfil externo em rota interna -> /assistente (APIs respondem 403).
+ * - Quem não é da STI em rota da STI -> /assistente (APIs respondem 403).
+ * Permissões por chamado (ver, anexar, mudar status) ficam nas rotas, em lib/permissoes.ts.
  */
 export async function proxy(req: NextRequest) {
   const url = process.env.SUPABASE_URL;
@@ -42,8 +43,8 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(destino);
   }
 
-  if (exigeInterno(pathname) && perfilDe(usuario.app_metadata) !== "interno") {
-    if (ehApi) return NextResponse.json({ erro: "Acesso restrito à equipe de TI." }, { status: 403 });
+  if (exigeSti(pathname) && perfilDe(usuario.app_metadata) !== "sti") {
+    if (ehApi) return NextResponse.json({ erro: "Acesso restrito à equipe da STI." }, { status: 403 });
     return NextResponse.redirect(new URL("/assistente", req.url));
   }
 

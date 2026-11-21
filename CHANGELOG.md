@@ -7,6 +7,27 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não publicado]
 
+Sprint 5: atendimento por perfil. Exige a migração `supabase/migrations/20261121150000_sprint5.sql` no banco.
+
+### Adicionado
+
+- Três perfis: usuário externo, usuário interno (servidor da SEMA) e equipe da STI, com a conta de demonstração `sti@example.com`.
+- Página do chamado (`/chamados/[id]`) com dados, prints do erro e painel de atendimento.
+- STI: botão "Assumir chamado" (um chamado aberto passa a "Em análise") e seletor de status; ao mudar ou concluir, pode
+  informar o RP e anexar prints.
+- RP do equipamento (número de patrimônio, só números): o usuário interno informa nos chamados de hardware; a STI, em
+  qualquer chamado.
+- Print do erro: até 3 imagens por chamado, escolhidas, arrastadas ou coladas com Ctrl+V; imagens grandes são reduzidas
+  no navegador. Ficam em bucket privado e só abrem para quem pode ver o chamado.
+- Busca pelo RP na Consulta de Chamados.
+- `PERFIL_LOCAL` para testar as telas de cada perfil sem Supabase.
+
+### Alterado
+
+- Usuários veem na lista só número, assunto, solicitante e status simplificado (Aberto, Em análise, Resolvido).
+- O perfil `interno` (equipe de TI) passa a se chamar `sti`; o nome antigo continua aceito. A conta `interno@example.com`
+  passa a ser de usuário interno (servidor da SEMA).
+
 ## [1.0.0] - 2026-11-21
 
 Primeira versão estável: todas as sprints do plano de entrega concluídas e o sistema no ar.

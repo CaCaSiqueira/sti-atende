@@ -11,8 +11,10 @@ if (!url || !chave) {
 }
 
 const SENHA = "Demo-STI-2026";
+// Perfis: externo (fora da SEMA), servidor (usuário interno, servidor da SEMA) e sti (equipe da STI).
 const CONTAS = [
-  { email: "interno@example.com", nome: "Ana Souza (TI SEMA)", perfil: "interno" },
+  { email: "sti@example.com", nome: "Ana Souza (STI SEMA)", perfil: "sti" },
+  { email: "interno@example.com", nome: "Beatriz Rocha (Servidora SEMA)", perfil: "servidor" },
   { email: "externo@example.com", nome: "Carlos Lima (Consultor Ambiental)", perfil: "externo" },
 ];
 

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type ReactNode } from "react";
 import { Leaf, LogOut, Menu, User, X } from "lucide-react";
-import type { Perfil, Usuario } from "@/lib/perfil";
-import { NAV_ADMIN, NAV_PRINCIPAL, estaAtivo, itensVisiveis, type ItemNavegacao } from "./navegacao";
+import { PERFIS, type Perfil, type Usuario } from "@/lib/perfil";
+import { NAV_ADMIN, NAV_PRINCIPAL, estaAtivo, itensVisiveis, rotuloPara, type ItemNavegacao } from "./navegacao";
 
 const TODOS = [...NAV_PRINCIPAL, ...NAV_ADMIN];
 
@@ -20,7 +20,7 @@ function LinkNav({ item, ativo, perfil, aoClicar }: { item: ItemNavegacao; ativo
   return (
     <Link href={item.href} onClick={aoClicar} aria-current={ativo ? "page" : undefined} className={`${base} ${estilo}`}>
       <Icone className="size-5 shrink-0" aria-hidden />
-      <span>{perfil === "externo" && item.rotuloExterno ? item.rotuloExterno : item.rotulo}</span>
+      <span>{rotuloPara(item, perfil)}</span>
     </Link>
   );
 }
@@ -42,7 +42,38 @@ function Marca({ versao }: { versao: string }) {
 /** undefined = carregando; null = sem login configurado (dev local). */
 type EstadoUsuario = Usuario | null | undefined;
 
-function ConteudoSidebar({ pathname, usuario, aoNavegar }: { pathname: string; usuario: EstadoUsuario; aoNavegar: () => void }) {
+type PerfilNav = Perfil | null | undefined;
+
+/** `pathname` null = rota ainda desconhecida (pré-renderização): mostra os links sem destacar nenhum. */
+function ListaNav({ pathname, perfil, aoNavegar }: { pathname: string | null; perfil: PerfilNav; aoNavegar: () => void }) {
+  const ativo = (href: string) => pathname !== null && estaAtivo(pathname, href, TODOS);
+  const principal = itensVisiveis(NAV_PRINCIPAL, perfil);
+  const admin = itensVisiveis(NAV_ADMIN, perfil);
+  return (
+    <nav aria-label="Navegação principal" className="flex-1 space-y-2 overflow-y-auto p-4">
+      {principal.map((item) => (
+        <LinkNav key={item.href} item={item} perfil={perfil} ativo={ativo(item.href)} aoClicar={aoNavegar} />
+      ))}
+      {admin.length > 0 && (
+        <div className="mt-6 border-t border-gray-700 pt-6">
+          <p className="mb-2 px-4 text-xs uppercase tracking-wider text-gray-500">Administração</p>
+          <div className="space-y-2">
+            {admin.map((item) => (
+              <LinkNav key={item.href} item={item} perfil={perfil} ativo={ativo(item.href)} aoClicar={aoNavegar} />
+            ))}
+          </div>
+        </div>
+      )}
+    </nav>
+  );
+}
+
+/** Lê a URL para destacar o item ativo. Em rotas com parâmetro dinâmico (/chamados/[id]) isso só existe na requisição. */
+function NavComRota(props: { perfil: PerfilNav; aoNavegar: () => void }) {
+  return <ListaNav pathname={usePathname()} {...props} />;
+}
+
+function ConteudoSidebar({ usuario, aoNavegar }: { usuario: EstadoUsuario; aoNavegar: () => void }) {
   const router = useRouter();
   async function sair() {
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
@@ -50,25 +81,11 @@ function ConteudoSidebar({ pathname, usuario, aoNavegar }: { pathname: string; u
     router.refresh(); // descarta páginas em cache da sessão anterior
   }
   const perfil = usuario === undefined ? undefined : (usuario?.perfil ?? null);
-  const principal = itensVisiveis(NAV_PRINCIPAL, perfil);
-  const admin = itensVisiveis(NAV_ADMIN, perfil);
   return (
     <>
-      <nav aria-label="Navegação principal" className="flex-1 space-y-2 overflow-y-auto p-4">
-        {principal.map((item) => (
-          <LinkNav key={item.href} item={item} perfil={perfil} ativo={estaAtivo(pathname, item.href, TODOS)} aoClicar={aoNavegar} />
-        ))}
-        {admin.length > 0 && (
-          <div className="mt-6 border-t border-gray-700 pt-6">
-            <p className="mb-2 px-4 text-xs uppercase tracking-wider text-gray-500">Administração</p>
-            <div className="space-y-2">
-              {admin.map((item) => (
-                <LinkNav key={item.href} item={item} perfil={perfil} ativo={estaAtivo(pathname, item.href, TODOS)} aoClicar={aoNavegar} />
-              ))}
-            </div>
-          </div>
-        )}
-      </nav>
+      <Suspense fallback={<ListaNav pathname={null} perfil={perfil} aoNavegar={aoNavegar} />}>
+        <NavComRota perfil={perfil} aoNavegar={aoNavegar} />
+      </Suspense>
       <div className="flex items-center gap-3 border-t border-gray-700 p-4 text-sm">
         <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-600">
           <User className="size-4" aria-hidden />
@@ -76,7 +93,7 @@ function ConteudoSidebar({ pathname, usuario, aoNavegar }: { pathname: string; u
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{usuario ? usuario.nome : usuario === null ? "Modo local" : "..."}</p>
           <p className="text-xs text-gray-400">
-            {usuario ? (usuario.perfil === "interno" ? "Equipe de TI (interno)" : "Usuário externo") : usuario === null ? "Sem login configurado" : ""}
+            {usuario ? PERFIS[usuario.perfil].rotulo : usuario === null ? "Sem login configurado" : ""}
           </p>
         </div>
         {usuario && (
@@ -90,7 +107,6 @@ function ConteudoSidebar({ pathname, usuario, aoNavegar }: { pathname: string; u
 }
 
 export function AppShell({ children, versao }: { children: ReactNode; versao: string }) {
-  const pathname = usePathname();
   const [menuAberto, setMenuAberto] = useState(false);
   const [usuario, setUsuario] = useState<EstadoUsuario>(undefined);
   const fechar = () => setMenuAberto(false);
@@ -113,7 +129,7 @@ export function AppShell({ children, versao }: { children: ReactNode; versao: st
         <div className="border-b border-gray-700 p-6">
           <Marca versao={versao} />
         </div>
-        <ConteudoSidebar pathname={pathname} usuario={usuario} aoNavegar={fechar} />
+        <ConteudoSidebar usuario={usuario} aoNavegar={fechar} />
       </aside>
 
       {/* Celular: gaveta sobreposta */}
@@ -127,7 +143,7 @@ export function AppShell({ children, versao }: { children: ReactNode; versao: st
                 <X className="size-5" aria-hidden />
               </button>
             </div>
-            <ConteudoSidebar pathname={pathname} usuario={usuario} aoNavegar={fechar} />
+            <ConteudoSidebar usuario={usuario} aoNavegar={fechar} />
           </aside>
         </div>
       )}
