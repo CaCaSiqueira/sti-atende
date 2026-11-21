@@ -51,4 +51,10 @@ export const SPRINTS: Sprint[] = [
     entrega: "Histórico do chamado, nota de solução obrigatória ao concluir, filtros da STI e banco sempre ativo (cron diário).",
     status: "concluida",
   },
+  {
+    numero: 7,
+    titulo: "Proteções de produção",
+    entrega: "Limites de requisição no banco (valem para todas as instâncias) e sistema bloqueado sem configuração completa.",
+    status: "concluida",
+  },
 ];

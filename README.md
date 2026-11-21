@@ -20,7 +20,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Abra http://localhost:3000. Sem as chaves, o sistema funciona com dados de exemplo e regras locais.
+Abra http://localhost:3000. Sem nenhuma chave do Supabase, o sistema abre em **modo demonstração** (veja [Modos de funcionamento](#modos-de-funcionamento)).
 
 ### Variáveis de ambiente (`.env.local`)
 
@@ -30,7 +30,7 @@ Abra http://localhost:3000. Sem as chaves, o sistema funciona com dados de exemp
 | `SUPABASE_PUBLISHABLE_KEY` | Mesma tela (chave **publicável**, usada só para login/sessão) |
 | `GEMINI_API_KEY` | https://aistudio.google.com/apikey (ou rode `scripts/definir-chave-gemini.ps1`, que grava sem exibir) |
 | `GEMINI_MODEL` | Opcional; padrão `gemini-3.5-flash-lite` |
-| `PERFIL_LOCAL` | Só sem Supabase: simula um usuário logado (`externo`, `servidor` ou `sti`) para testar as telas de cada perfil |
+| `PERFIL_LOCAL` | Só no modo demonstração: simula um usuário logado (`externo`, `servidor` ou `sti`) para testar as telas de cada perfil |
 
 O schema do banco está em `supabase/migrations/`. Os prints do erro ficam no Storage do Supabase, no bucket privado `prints` (criado pela migração da Sprint 5).
 
@@ -102,6 +102,22 @@ O perfil fica em `app_metadata` (só o servidor altera), com os valores `externo
 
 As regras ficam em `src/lib/roteamento.ts` e casam palavras inteiras sem acento ("carregar" não dispara o CAR).
 
+## Modos de funcionamento
+
+A regra fica em `src/lib/ambiente.ts` e vale para o proxy, as APIs, o acesso ao banco e a Saúde do Sistema.
+
+| Situação | Modo | O que acontece |
+|---|---|---|
+| As três chaves do Supabase configuradas | Normal | Banco, login e Storage do Supabase |
+| Nenhuma chave, fora da Vercel (computador local) | Demonstração | Chamados de exemplo em memória, sem login, faixa de aviso no topo. Nada é salvo |
+| Nenhuma chave na Vercel, ou configuração incompleta em qualquer lugar | Bloqueado | Páginas e APIs respondem 503 "configuração incompleta"; `/api/health` mostra quais variáveis faltam (só os nomes) |
+
+O sistema **nunca** cai para a memória em produção: se o banco configurado ficar fora do ar, as operações dão erro e a Saúde do Sistema mostra a falha.
+
+## Limites de requisição
+
+Login, chat, abertura e atualização de chamados, prints e sincronização do CAR têm limite por IP e por minuto. A contagem fica no Supabase (função `permitir_requisicao`, migração da Sprint 7): vale para todas as instâncias da Vercel e não zera quando uma reinicia. Se a checagem no banco falhar, a instância usa um limite em memória como reserva, em vez de liberar tudo. O limite em memória puro só é usado no modo demonstração.
+
 ## Saúde do sistema
 
 `GET /api/health` devolve o status da aplicação, do banco e da IA, com latência, versão, commit e ambiente. Responde 503 quando algum serviço configurado falha.
@@ -130,6 +146,7 @@ src/types/       tipos compartilhados
 | 4 | Login por perfil, deploy na Vercel (São Paulo), testes de permissão | 0.4.0 | ✅ |
 | 5 | Perfis externo/interno/STI, RP do equipamento, print do erro, atendimento pela STI | 1.1.0 | ✅ |
 | 6 | Histórico do chamado, nota de solução, filtros da STI, banco sempre ativo | 1.2.0 | ✅ |
+| 7 | Limites de requisição no banco, sistema bloqueado sem configuração completa | 1.3.0 | ✅ |
 
 A versão **1.0.0** é a primeira estável: plano de entrega concluído e sistema no ar.
 

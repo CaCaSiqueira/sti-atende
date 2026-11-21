@@ -17,7 +17,7 @@ export interface RespostaChat {
 }
 
 export async function POST(req: Request) {
-  if (!permitir(`chat:${ipDaRequisicao(req)}`, 15, 60_000)) {
+  if (!(await permitir(`chat:${ipDaRequisicao(req)}`, 15, 60_000))) {
     return Response.json({ erro: "Muitas mensagens em pouco tempo. Aguarde um minuto." }, { status: 429 });
   }
 

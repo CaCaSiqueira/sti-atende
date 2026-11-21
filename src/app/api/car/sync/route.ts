@@ -11,7 +11,7 @@ const UM_ANO_S = 60 * 60 * 24 * 365;
  * Sem autenticação configurada (desenvolvimento local), usa um cookie anônimo httpOnly.
  */
 export async function POST(req: NextRequest) {
-  if (!permitir(`car:${ipDaRequisicao(req)}`, 10, 60_000)) {
+  if (!(await permitir(`car:${ipDaRequisicao(req)}`, 10, 60_000))) {
     return NextResponse.json({ erro: "Muitas tentativas. Aguarde um minuto." }, { status: 429 });
   }
 

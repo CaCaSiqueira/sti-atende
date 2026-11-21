@@ -9,7 +9,7 @@ import { MAX_ANEXOS, podeAnexar, podeVer } from "@/lib/permissoes";
  * O tipo é conferido pelos bytes do arquivo (PNG, JPEG ou WebP), não pela extensão.
  */
 export async function POST(req: Request, ctx: RouteContext<"/api/chamados/[id]/anexos">) {
-  if (!permitir(`anexos:${ipDaRequisicao(req)}`, 12, 60_000)) {
+  if (!(await permitir(`anexos:${ipDaRequisicao(req)}`, 12, 60_000))) {
     return Response.json({ erro: "Muitos envios em pouco tempo. Aguarde um minuto." }, { status: 429 });
   }
   // Recusa cedo o que nem caberia: o limite de corpo da Vercel é 4,5 MB.

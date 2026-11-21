@@ -9,7 +9,8 @@ import { obterSupabase } from "./supabase";
 /**
  * Camada de acesso a chamados.
  * Com Supabase configurado, lê e grava no banco (prints no Storage, bucket privado "prints").
- * Sem ele, usa dados de exemplo em memória (útil para desenvolvimento e para a demonstração não quebrar se o banco cair).
+ * Sem ele, só no modo demonstração (nenhuma chave do Supabase, fora da Vercel), usa dados de exemplo em memória.
+ * Se o banco configurado cair, as operações dão erro: a memória nunca substitui o banco em produção (ver lib/ambiente.ts).
  * Toda mudança registra um evento no histórico do chamado (tabela chamado_eventos).
  */
 

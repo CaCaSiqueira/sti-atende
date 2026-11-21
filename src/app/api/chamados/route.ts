@@ -22,7 +22,7 @@ const Entrada = z.object({
 
 /** Abertura manual (formulário) ou pedido de analista vindo do chat. Os prints vão depois, em /api/chamados/[id]/anexos. */
 export async function POST(req: Request) {
-  if (!permitir(`chamados:${ipDaRequisicao(req)}`, 10, 60_000)) {
+  if (!(await permitir(`chamados:${ipDaRequisicao(req)}`, 10, 60_000))) {
     return Response.json({ erro: "Muitas solicitações em pouco tempo. Aguarde um minuto." }, { status: 429 });
   }
 

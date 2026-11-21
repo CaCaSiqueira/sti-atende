@@ -1,4 +1,5 @@
 import "server-only";
+import { chavesAusentes, modoDoSistema } from "./ambiente";
 import { pingBanco } from "./chamados";
 import { iaConfigurada, modeloIA, obterUltimaChamadaIA } from "./ia";
 import { VERSAO } from "./versao";
@@ -38,8 +39,16 @@ function aplicacao(): Verificacao {
 
 async function bancoDeDados(): Promise<Verificacao> {
   const base = { id: "banco", nome: "Banco de dados (Supabase)" } as const;
+  const modo = modoDoSistema();
+  if (modo === "bloqueado") {
+    // Só os nomes das variáveis, nunca os valores.
+    return { ...base, status: "falha", latenciaMs: null, detalhe: `Configuração incompleta, sistema bloqueado. Faltam: ${chavesAusentes().join(", ")}` };
+  }
+  if (modo === "demonstracao") {
+    return { ...base, status: "nao_configurado", latenciaMs: null, detalhe: "Modo demonstração: dados de exemplo em memória, nada é salvo" };
+  }
   const r = await pingBanco();
-  if (!r) return { ...base, status: "nao_configurado", latenciaMs: null, detalhe: "Sem banco: usando dados de exemplo" };
+  if (!r) return { ...base, status: "falha", latenciaMs: null, detalhe: "Banco não respondeu" };
   if (!r.ok) return { ...base, status: "falha", latenciaMs: r.ms, detalhe: "Consulta ao banco falhou" };
   const lento = r.ms > LATENCIA_LENTA_MS;
   return { ...base, status: lento ? "degradado" : "ok", latenciaMs: r.ms, detalhe: lento ? "Respondendo devagar" : "Consulta real à tabela de chamados" };

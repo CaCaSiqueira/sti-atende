@@ -7,6 +7,20 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não publicado]
 
+Sprint 7: proteções de produção. Exige a migração `supabase/migrations/20261121220000_sprint7.sql` no banco.
+
+### Alterado
+
+- Limites de requisição (login, chat, chamados, prints, CAR) contados no Supabase: valem para todas as instâncias da
+  Vercel e não zeram quando uma reinicia. Se a checagem falhar, a instância usa o limite em memória como reserva.
+- Sistema bloqueado (503, tela "indisponível") quando a configuração do Supabase está incompleta, ou ausente na Vercel.
+  Antes, nesses casos, ele abria sem login e com chamados em memória. `/api/health` mostra quais variáveis faltam.
+- Modo demonstração (memória, sem login) só sem nenhuma chave e fora da Vercel, com faixa de aviso no topo.
+
+### Corrigido
+
+- README dizia que os dados de exemplo entram quando o banco cai; na verdade o sistema mostra erro, e agora isso é a regra.
+
 ## [1.2.0] - 2026-11-21
 
 Sprint 6: histórico e solução. Exige a migração `supabase/migrations/20261121190000_sprint6.sql` no banco.

@@ -24,7 +24,7 @@ const Entrada = z
  * Chamado de outra pessoa responde 404, para não revelar que o número existe.
  */
 export async function PATCH(req: Request, ctx: RouteContext<"/api/chamados/[id]">) {
-  if (!permitir(`atualizar:${ipDaRequisicao(req)}`, 30, 60_000)) {
+  if (!(await permitir(`atualizar:${ipDaRequisicao(req)}`, 30, 60_000))) {
     return Response.json({ erro: "Muitas alterações em pouco tempo. Aguarde um minuto." }, { status: 429 });
   }
   const entrada = Entrada.safeParse(await req.json().catch(() => null));

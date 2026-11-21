@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
+import { MENSAGEM_BLOQUEADO, modoDoSistema } from "./ambiente";
 import { PERFIS, ehPerfil, perfilDe, type Usuario } from "./perfil";
 
 /**
@@ -44,6 +45,9 @@ function usuarioLocal(): Usuario | null {
  * `usuario: null` só acontece sem login configurado (desenvolvimento local).
  */
 export async function sessaoDaApi(): Promise<{ usuario: Usuario | null } | { negado: Response }> {
+  if (modoDoSistema() === "bloqueado") {
+    return { negado: Response.json({ erro: MENSAGEM_BLOQUEADO }, { status: 503 }) };
+  }
   const usuario = await obterUsuario();
   if (authConfigurada() && !usuario) {
     return { negado: Response.json({ erro: "Faça login para continuar." }, { status: 401 }) };
@@ -53,7 +57,8 @@ export async function sessaoDaApi(): Promise<{ usuario: Usuario | null } | { neg
 
 /** Usuário logado, ou null. Valida o token no Supabase (getUser), não só lê o cookie. */
 export async function obterUsuario(): Promise<Usuario | null> {
-  if (!authConfigurada()) return usuarioLocal();
+  // Sem login configurado: só o modo demonstração tem "usuário"; configuração incompleta não tem ninguém.
+  if (!authConfigurada()) return modoDoSistema() === "demonstracao" ? usuarioLocal() : null;
   const supabase = await clienteAuth();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;

@@ -6,7 +6,7 @@ const Entrada = z.object({ email: z.string().trim().email().max(200), senha: z.s
 
 export async function POST(req: Request) {
   // Freia tentativas de adivinhar senha.
-  if (!permitir(`login:${ipDaRequisicao(req)}`, 10, 60_000)) {
+  if (!(await permitir(`login:${ipDaRequisicao(req)}`, 10, 60_000))) {
     return Response.json({ erro: "Muitas tentativas. Aguarde um minuto." }, { status: 429 });
   }
   const entrada = Entrada.safeParse(await req.json().catch(() => null));

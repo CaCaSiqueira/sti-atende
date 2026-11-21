@@ -106,7 +106,7 @@ function ConteudoSidebar({ usuario, aoNavegar }: { usuario: EstadoUsuario; aoNav
   );
 }
 
-export function AppShell({ children, versao }: { children: ReactNode; versao: string }) {
+export function AppShell({ children, versao, demonstracao }: { children: ReactNode; versao: string; demonstracao: boolean }) {
   const [menuAberto, setMenuAberto] = useState(false);
   const [usuario, setUsuario] = useState<EstadoUsuario>(undefined);
   const fechar = () => setMenuAberto(false);
@@ -160,6 +160,11 @@ export function AppShell({ children, versao }: { children: ReactNode; versao: st
             <Menu className="size-6" aria-hidden />
           </button>
         </header>
+        {demonstracao && (
+          <p role="status" className="bg-amber-100 px-4 py-2 text-center text-sm text-amber-900">
+            <strong>Modo demonstração:</strong> dados de exemplo em memória. Nada é salvo e não há login.
+          </p>
+        )}
         <main className="flex-1 overflow-y-auto bg-gray-50">{children}</main>
       </div>
     </div>
