@@ -7,6 +7,8 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não publicado]
 
+## [1.4.0] - 2026-11-21
+
 Sprint 8: prova de execução dos testes. Sem migração nova.
 
 ### Adicionado
