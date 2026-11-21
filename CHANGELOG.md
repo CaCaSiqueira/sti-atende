@@ -7,6 +7,8 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não publicado]
 
+## [1.1.1] - 2026-11-21
+
 ### Corrigido
 
 - Os prints do erro não ficam mais no cache do navegador (antes ficavam 10 minutos), para não sobrarem depois do
