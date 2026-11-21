@@ -1,0 +1,62 @@
+# Verificação automática: roda em todo envio de código (qualquer branch) e em todo pull request.
+# O resultado (✓ ou ✗) aparece em cada commit no GitHub, e o selo do README mostra o da main.
+name: Verificação
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verificacao-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    name: Testes, tipos, lint e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Testes (regras de negócio)
+        run: npm test
+      - name: Tipos
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Build de produção (modo demonstração, sem chaves)
+        run: npm run build
+
+  banco:
+    name: Banco de teste (migrações e funções)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      BANCO_TESTE_URL: postgres://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Migrações e funções do banco
+        run: npm run test:banco

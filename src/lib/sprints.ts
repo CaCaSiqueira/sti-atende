@@ -61,7 +61,7 @@ export const SPRINTS: Sprint[] = [
     numero: 8,
     titulo: "Prova de execução dos testes",
     entrega: "Verificação automática no GitHub (testes, tipos, lint, build) e banco de teste que aplica as migrações e testa as funções.",
-    status: "pendente",
+    status: "concluida",
   },
   {
     numero: 9,

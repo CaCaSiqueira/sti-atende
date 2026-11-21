@@ -9,7 +9,8 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test \"src/**/*.test.ts\"",
-    "lancar": "node scripts/lancar-versao.mjs"
+    "lancar": "node scripts/lancar-versao.mjs",
+    "test:banco": "node --test \"supabase/testes/*.test.ts\""
   },
   "dependencies": {
     "@google/genai": "^3.3.0",
@@ -25,10 +26,12 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
+    "pg": "^8.23.1",
     "tailwindcss": "4.3.3",
     "typescript": "^5"
   }

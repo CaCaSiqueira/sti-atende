@@ -7,6 +7,16 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não publicado]
 
+Sprint 8: prova de execução dos testes. Sem migração nova.
+
+### Adicionado
+
+- Verificação automática no GitHub (`.github/workflows/ci.yml`) em todo envio de código e pull request: testes, tipos,
+  lint e build de produção. Selo com o resultado no README.
+- Testes do banco (`npm run test:banco`) num PostgreSQL de teste: todas as migrações aplicam em ordem; RLS em todas as
+  tabelas; o navegador não lê nem grava nada; bucket dos prints privado; limite de requisições com 20 chamadas
+  simultâneas e sem acesso pelo navegador.
+
 ## [1.3.0] - 2026-11-21
 
 Sprint 7: proteções de produção. Exige a migração `supabase/migrations/20261121220000_sprint7.sql` no banco.

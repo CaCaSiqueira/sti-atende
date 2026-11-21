@@ -1,5 +1,7 @@
 # STI Atende (SEMA-MT)
 
+[![Verificação](https://github.com/CaCaSiqueira/sti-atende/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/CaCaSiqueira/sti-atende/actions/workflows/ci.yml)
+
 **No ar:** https://sti-atende.vercel.app
 
 Central de suporte de TI com assistente de IA nível 1: resolve problemas conhecidos via POP ou encaminha o chamado ao setor certo (GATI, CSTI, Infraestrutura) conforme o SLA.
@@ -34,13 +36,31 @@ Abra http://localhost:3000. Sem nenhuma chave do Supabase, o sistema abre em **m
 
 O schema do banco está em `supabase/migrations/`. Os prints do erro ficam no Storage do Supabase, no bucket privado `prints` (criado pela migração da Sprint 5).
 
+## Testes e verificação automática
+
+Todo envio de código e todo pull request passam pela [verificação do GitHub](https://github.com/CaCaSiqueira/sti-atende/actions/workflows/ci.yml) (`.github/workflows/ci.yml`). O resultado (✓ ou ✗) aparece em cada commit, e o selo no topo mostra o da `main`.
+
+| Etapa | O que comprova |
+|---|---|
+| Testes, tipos, lint e build | Regras de negócio (`npm test`), checagem de tipos, ESLint e build de produção |
+| Banco de teste (PostgreSQL 17) | Todas as migrações aplicam em ordem num banco vazio; RLS ligado em todas as tabelas; o navegador não lê nem grava nada; bucket dos prints privado; limite de requisições com 20 chamadas simultâneas (passam exatamente as permitidas) e sem acesso pelo navegador |
+
+O banco de teste imita o que o Supabase já traz pronto (papéis `anon`, `authenticated` e `service_role` com as permissões padrão, `auth.users` e `storage.buckets`) e é apagado no fim. Nada toca o banco de produção. Para rodar no seu computador, com um PostgreSQL local:
+
+```bash
+BANCO_TESTE_URL=postgres://postgres:postgres@localhost:5432/postgres npm run test:banco
+```
+
+Sem `BANCO_TESTE_URL`, os testes do banco aparecem como pulados.
+
 ## Como a IA decide
 
 A IA **interpreta e redige**; o **código decide** setor e prioridade pelas regras de SLA. Se o Gemini falhar, demorar mais de 8s ou estiver sem chave, as regras locais assumem e o chat mostra quem respondeu. A mensagem do usuário é tratada como dado (proteção contra *prompt injection*).
 
 | Comando | O que faz |
 |---|---|
-| `npm test` | Testes de roteamento, SLA, permissões, imagens e versão (Node test runner, sem dependências) |
+| `npm test` | Testes das regras de negócio: roteamento, SLA, perfis, permissões, histórico, imagens, modos e versão |
+| `npm run test:banco` | Testes do banco: aplica todas as migrações num PostgreSQL de teste e testa as funções (precisa de `BANCO_TESTE_URL`) |
 | `npm run typecheck` | Checagem de tipos |
 | `npm run lint` | ESLint |
 | `npm run build` | Build de produção |
@@ -147,7 +167,7 @@ src/types/       tipos compartilhados
 | 5 | Perfis externo/interno/STI, RP do equipamento, print do erro, atendimento pela STI | 1.1.0 | ✅ |
 | 6 | Histórico do chamado, nota de solução, filtros da STI, banco sempre ativo | 1.2.0 | ✅ |
 | 7 | Limites de requisição no banco, sistema bloqueado sem configuração completa | 1.3.0 | ✅ |
-| 8 | Verificação automática no GitHub e testes do banco (migrações e funções) | 1.4.0 | Planejada |
+| 8 | Verificação automática no GitHub e testes do banco (migrações e funções) | 1.4.0 | ✅ |
 | 9 | CAR: regra de 24h atômica, estados da sincronização e aviso de simulação | 1.5.0 | Planejada |
 
 A versão **1.0.0** é a primeira estável: plano de entrega concluído e sistema no ar.
