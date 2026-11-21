@@ -28,8 +28,8 @@ export default async function Chamados() {
   if (ehSti(usuario)) {
     return (
       <div className="p-4 sm:p-6 lg:p-8">
-        <Cabecalho titulo="Consulta de Chamados" descricao="Status, responsável e RP de cada chamado. Clique no número para atender." />
-        <ListaChamados visao="sti" chamados={chamados} />
+        <Cabecalho titulo="Consulta de Chamados" descricao="Status, responsável e RP de cada chamado. Filtre a fila e clique no número para atender." />
+        <ListaChamados visao="sti" chamados={chamados} meuId={usuario?.id ?? null} />
       </div>
     );
   }

@@ -20,6 +20,8 @@ export interface Chamado {
   /** Aberto por servidor da SEMA ou pela STI. */
   interno: boolean;
   totalAnexos: number;
+  /** Quem da STI assumiu (para o filtro "atribuídos a mim"). */
+  responsavelId: string | null;
 }
 
 /** Chamado como o usuário vê na lista: só número, assunto, solicitante e status simplificado. */
@@ -41,13 +43,29 @@ export interface Anexo {
   enviadoEm: string;
 }
 
+export type TipoEvento = "aberto" | "assumido" | "status" | "rp" | "print";
+
+/** Uma linha do histórico do chamado. */
+export interface EventoChamado {
+  id: string;
+  tipo: TipoEvento;
+  /** Status depois do evento (abertura e mudanças de status). */
+  status: StatusChamado | null;
+  /** RP informado, ou a nota de solução quando o status vira "resolvido". */
+  detalhe: string | null;
+  autor: string | null;
+  criadoEm: string;
+}
+
 /** Tudo do chamado, para a página de detalhe. */
 export interface ChamadoDetalhe extends Chamado {
   descricao: string | null;
   solicitanteId: string | null;
-  responsavelId: string | null;
   resolvidoEm: string | null;
+  /** Nota de solução escrita pela STI ao concluir. */
+  solucao: string | null;
   anexos: Anexo[];
+  eventos: EventoChamado[];
 }
 
 export interface Indicadores {

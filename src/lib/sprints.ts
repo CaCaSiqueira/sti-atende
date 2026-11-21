@@ -45,4 +45,10 @@ export const SPRINTS: Sprint[] = [
     entrega: "Perfis externo, interno e STI; RP do equipamento; print do erro; STI assume e muda o status do chamado.",
     status: "concluida",
   },
+  {
+    numero: 6,
+    titulo: "Histórico e solução",
+    entrega: "Histórico do chamado, nota de solução obrigatória ao concluir, filtros da STI e banco sempre ativo (cron diário).",
+    status: "concluida",
+  },
 ];

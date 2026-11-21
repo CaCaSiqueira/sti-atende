@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { UserCheck } from "lucide-react";
 import type { StatusChamado } from "@/types/chamado";
+import { MAX_SOLUCAO, MIN_SOLUCAO } from "@/lib/historico";
 import { MAX_ANEXOS, rpValido } from "@/lib/permissoes";
 import { STATUS } from "@/lib/setores";
 import { SeletorPrints } from "./SeletorPrints";
@@ -24,6 +25,7 @@ const OPCOES_STATUS = Object.entries(STATUS) as [StatusChamado, { rotulo: string
 
 /**
  * STI: assume o chamado e muda o status; ao mudar ou concluir, pode informar o RP e anexar prints.
+ * Concluir exige a nota de solução, que o usuário vai ler.
  * Usuário: complementa o próprio chamado com prints (e o RP, se for interno e o chamado for de hardware).
  */
 export function PainelAtualizacao({ chamadoId, permissoes, statusAtual, rpAtual, responsavel, souResponsavel, vagasPrints }: Props) {
@@ -31,6 +33,7 @@ export function PainelAtualizacao({ chamadoId, permissoes, statusAtual, rpAtual,
   const [status, setStatus] = useState(statusAtual);
   const [rp, setRp] = useState(rpAtual ?? "");
   const [prints, setPrints] = useState<File[]>([]);
+  const [solucao, setSolucao] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -41,6 +44,7 @@ export function PainelAtualizacao({ chamadoId, permissoes, statusAtual, rpAtual,
     setBase({ statusAtual, rpAtual });
     setStatus(statusAtual);
     setRp(rpAtual ?? "");
+    setSolucao("");
   }
 
   const rpLimpo = rp.trim();
@@ -48,6 +52,8 @@ export function PainelAtualizacao({ chamadoId, permissoes, statusAtual, rpAtual,
   const mudouRp = permissoes.rp && rpLimpo !== (rpAtual ?? "");
   const temMudanca = mudouStatus || mudouRp || prints.length > 0;
   const rpInvalido = rpLimpo !== "" && !rpValido(rpLimpo);
+  const concluindo = mudouStatus && status === "resolvido";
+  const solucaoCurta = concluindo && solucao.trim().length < MIN_SOLUCAO;
 
   async function atualizar(corpo: Record<string, unknown>): Promise<boolean> {
     const res = await fetch(`/api/chamados/${encodeURIComponent(chamadoId)}`, {
@@ -74,19 +80,21 @@ export function PainelAtualizacao({ chamadoId, permissoes, statusAtual, rpAtual,
 
   async function salvar(e: FormEvent) {
     e.preventDefault();
-    if (rpInvalido) return;
+    if (rpInvalido || solucaoCurta) return;
     setErro(null);
     setAviso(null);
     setSalvando(true);
     try {
-      const corpo: Record<string, unknown> = {};
-      if (mudouStatus) corpo.status = status;
-      if (mudouRp) corpo.rp = rpLimpo;
-      if (Object.keys(corpo).length > 0 && !(await atualizar(corpo))) return;
+      // Prints primeiro: no histórico, a conclusão fica por último.
       const erros = prints.length > 0 ? await enviarPrints(chamadoId, prints) : [];
       setPrints([]);
+      const corpo: Record<string, unknown> = {};
+      if (mudouStatus) corpo.status = status;
+      if (concluindo) corpo.solucao = solucao.trim();
+      if (mudouRp) corpo.rp = rpLimpo;
+      const atualizou = Object.keys(corpo).length === 0 || (await atualizar(corpo));
       if (erros.length > 0) setErro(`Alguns prints não foram enviados. ${erros.join(" ")}`);
-      else setAviso(status === "resolvido" && mudouStatus ? "Chamado concluído." : "Chamado atualizado.");
+      else if (atualizou) setAviso(concluindo ? "Chamado concluído." : "Chamado atualizado.");
       router.refresh();
     } finally {
       setSalvando(false);
@@ -130,6 +138,27 @@ export function PainelAtualizacao({ chamadoId, permissoes, statusAtual, rpAtual,
           </div>
         )}
 
+        {concluindo && (
+          <div>
+            <label htmlFor="solucao" className="mb-1 block text-sm font-medium text-gray-700">
+              Nota de solução <span className="font-normal text-gray-500">(obrigatória)</span>
+            </label>
+            <textarea
+              id="solucao"
+              rows={4}
+              maxLength={MAX_SOLUCAO}
+              value={solucao}
+              onChange={(e) => setSolucao(e.target.value)}
+              aria-describedby="ajuda-solucao"
+              placeholder="Ex.: Cabo HDMI substituído e monitor testado com o usuário."
+              className={`${campo} border-gray-300`}
+            />
+            <p id="ajuda-solucao" className="mt-1 text-xs text-gray-500">
+              O solicitante vai ler esta nota. Diga o que foi feito{solucaoCurta ? ` (pelo menos ${MIN_SOLUCAO} caracteres)` : ""}.
+            </p>
+          </div>
+        )}
+
         {permissoes.rp && (
           <div>
             <label htmlFor="rp" className="mb-1 block text-sm font-medium text-gray-700">
@@ -169,10 +198,10 @@ export function PainelAtualizacao({ chamadoId, permissoes, statusAtual, rpAtual,
 
         <button
           type="submit"
-          disabled={!temMudanca || salvando || rpInvalido}
+          disabled={!temMudanca || salvando || rpInvalido || solucaoCurta}
           className="w-full rounded-lg bg-green-600 px-6 py-2 font-bold text-white transition hover:bg-green-700 disabled:opacity-50"
         >
-          {salvando ? "Salvando..." : mudouStatus && status === "resolvido" ? "Concluir chamado" : "Salvar alterações"}
+          {salvando ? "Salvando..." : concluindo ? "Concluir chamado" : "Salvar alterações"}
         </button>
       </form>
     </section>

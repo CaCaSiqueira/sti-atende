@@ -3,6 +3,7 @@ import { PERFIS } from "@/lib/perfil";
 import { sessaoDaApi } from "@/lib/auth";
 import { atualizarChamado, obterChamado, type MudancasChamado } from "@/lib/chamados";
 import { ipDaRequisicao, permitir } from "@/lib/limite";
+import { MAX_SOLUCAO, reabrindo, validarSolucao } from "@/lib/historico";
 import { RP_REGEX, podeGerenciar, podeInformarRP, podeVer } from "@/lib/permissoes";
 
 const Entrada = z
@@ -12,11 +13,14 @@ const Entrada = z
     status: z.enum(["aberto", "em_analise", "aguardando_terceiros", "resolvido"]).optional(),
     /** Vazio remove o RP. */
     rp: z.union([z.string().trim().regex(RP_REGEX, "Use só números."), z.literal("")]).optional(),
+    /** Nota de solução: obrigatória ao concluir. */
+    solucao: z.string().trim().max(MAX_SOLUCAO).optional(),
   })
   .refine((e) => e.assumir || e.status !== undefined || e.rp !== undefined, "Nada para atualizar.");
 
 /**
- * Atualiza o chamado: assumir e mudar status (só STI), RP do equipamento (STI ou o usuário interno dono do chamado de hardware).
+ * Atualiza o chamado: assumir, mudar status e concluir com nota de solução (só STI);
+ * RP do equipamento (STI ou o usuário interno dono do chamado de hardware). Cada mudança entra no histórico.
  * Chamado de outra pessoa responde 404, para não revelar que o número existe.
  */
 export async function PATCH(req: Request, ctx: RouteContext<"/api/chamados/[id]">) {
@@ -27,7 +31,7 @@ export async function PATCH(req: Request, ctx: RouteContext<"/api/chamados/[id]"
   if (!entrada.success) {
     return Response.json({ erro: "Dados inválidos.", campos: entrada.error.flatten().fieldErrors }, { status: 400 });
   }
-  const { assumir, status, rp } = entrada.data;
+  const { assumir, status, rp, solucao } = entrada.data;
 
   try {
     const sessao = await sessaoDaApi();
@@ -44,6 +48,8 @@ export async function PATCH(req: Request, ctx: RouteContext<"/api/chamados/[id]"
     if (rp !== undefined && !podeInformarRP(usuario, chamado)) {
       return Response.json({ erro: "O RP do equipamento não pode ser informado neste chamado." }, { status: 403 });
     }
+    const erroSolucao = validarSolucao(chamado.status, status, solucao);
+    if (erroSolucao) return Response.json({ erro: erroSolucao }, { status: 400 });
 
     const mudancas: MudancasChamado = {};
     if (assumir) {
@@ -52,9 +58,12 @@ export async function PATCH(req: Request, ctx: RouteContext<"/api/chamados/[id]"
       if (status === undefined && chamado.status === "aberto") mudancas.status = "em_analise";
     }
     if (status !== undefined && status !== chamado.status) mudancas.status = status;
-    if (rp !== undefined) mudancas.rpEquipamento = rp === "" ? null : rp;
+    if (mudancas.status === "resolvido") mudancas.solucao = solucao;
+    else if (reabrindo(chamado.status, mudancas.status)) mudancas.solucao = null;
+    if (rp !== undefined && (rp === "" ? null : rp) !== chamado.rpEquipamento) mudancas.rpEquipamento = rp === "" ? null : rp;
 
-    await atualizarChamado(chamado.id, mudancas);
+    const nome = usuario?.nome ?? `${PERFIS.sti.rotulo} (local)`;
+    await atualizarChamado(chamado.id, mudancas, { id: usuario?.id ?? null, nome });
     return Response.json({ ok: true });
   } catch (e) {
     console.error("[api/chamados/[id]]", e);

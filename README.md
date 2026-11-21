@@ -68,8 +68,12 @@ O perfil fica em `app_metadata` (só o servidor altera), com os valores `externo
 | Anexar print do erro (até 3) | Enquanto não resolvido | Enquanto não resolvido | Sempre |
 | Informar o RP do equipamento | Não | No próprio chamado de hardware | Sempre |
 | Assumir chamado e mudar status | Não | Não | Sim (ao mudar ou concluir, pode incluir RP e print) |
+| Concluir | Não | Não | Só com a **nota de solução** (mín. 10 caracteres), que o solicitante lê |
+| Histórico do chamado | Linha do tempo de status, sem nomes da equipe | Linha do tempo de status, sem nomes da equipe | Completo: quem fez o quê e quando (abertura, assumir, status, RP, prints) |
+| Filtros da lista | Busca | Busca | Busca + status, setor e "atribuídos a mim" |
 
 - **RP** é o número de patrimônio do equipamento: só números, opcional.
+- **Reabrir** um chamado resolvido apaga a nota atual; o histórico guarda a anterior.
 - **Chamado interno** é o aberto por servidor da SEMA ou pela STI; aparece marcado para a STI.
 - As regras ficam em `src/lib/permissoes.ts` e valem nas telas e nas APIs. Chamado de outra pessoa responde "não encontrado".
 - **Prints:** PNG, JPG ou WebP, conferidos pelos bytes do arquivo (não pela extensão). Imagens grandes são reduzidas no navegador antes do envio. Ficam em bucket privado e só abrem por `/api/anexos/[id]`, para quem pode ver o chamado.
@@ -80,8 +84,8 @@ O perfil fica em `app_metadata` (só o servidor altera), com os valores `externo
 |---|---|
 | `/assistente` | Assistente IA (entrada padrão) com POP do CAR e roteamento N1 |
 | `/visao-geral` | Indicadores e volume por setor (STI) |
-| `/chamados` | Meus Chamados (usuários) ou Consulta de Chamados (STI), com busca |
-| `/chamados/[id]` | Página do chamado: dados, prints do erro e, para a STI, Assumir e Status (com RP e print) |
+| `/chamados` | Meus Chamados (usuários) ou Consulta de Chamados (STI), com busca e, para a STI, filtros |
+| `/chamados/[id]` | Página do chamado: solução, dados, prints, histórico e, para a STI, Assumir e Status (com RP, print e nota de solução) |
 | `/chamados/novo` | Abertura manual com classificação automática, RP (hardware, usuário interno) e print do erro |
 | `/configuracoes` | Saúde do Sistema ao vivo (atualiza a cada 15s) + Plano de Entrega (STI) |
 | `/login` | Entrada com acesso rápido às contas de demonstração |
@@ -101,6 +105,8 @@ As regras ficam em `src/lib/roteamento.ts` e casam palavras inteiras sem acento 
 ## Saúde do sistema
 
 `GET /api/health` devolve o status da aplicação, do banco e da IA, com latência, versão, commit e ambiente. Responde 503 quando algum serviço configurado falha.
+
+A Vercel chama essa rota uma vez por dia (cron em `vercel.json`). A consulta real ao banco conta como uso e impede que o Supabase pause o projeto por inatividade no plano gratuito.
 
 ## Estrutura
 
@@ -123,6 +129,7 @@ src/types/       tipos compartilhados
 | 3 | Supabase com RLS, IA Gemini com fallback, SLA no servidor | 0.3.0 | ✅ |
 | 4 | Login por perfil, deploy na Vercel (São Paulo), testes de permissão | 0.4.0 | ✅ |
 | 5 | Perfis externo/interno/STI, RP do equipamento, print do erro, atendimento pela STI | 1.1.0 | ✅ |
+| 6 | Histórico do chamado, nota de solução, filtros da STI, banco sempre ativo | 1.2.0 | ✅ |
 
 A versão **1.0.0** é a primeira estável: plano de entrega concluído e sistema no ar.
 

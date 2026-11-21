@@ -7,6 +7,21 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não publicado]
 
+Sprint 6: histórico e solução. Exige a migração `supabase/migrations/20261121190000_sprint6.sql` no banco.
+
+### Adicionado
+
+- Histórico do chamado: abertura, assumir, mudanças de status, RP e prints, com quem fez e quando. A STI vê tudo; o
+  solicitante vê só a linha do tempo de status, sem nomes da equipe.
+- Nota de solução, obrigatória para concluir. O solicitante vê a solução na página do chamado.
+- Filtros na Consulta de Chamados da STI: status (inclui "Não resolvidos"), setor e "Atribuídos a mim", com contador.
+- Cron diário da Vercel em `/api/health`, para o Supabase do plano gratuito não pausar por inatividade.
+
+### Alterado
+
+- Reabrir um chamado resolvido apaga a nota de solução atual (o histórico guarda a anterior).
+- Chamados que já existiam começam o histórico pela abertura e, se resolvidos, pela resolução.
+
 ## [1.1.1] - 2026-11-21
 
 ### Corrigido

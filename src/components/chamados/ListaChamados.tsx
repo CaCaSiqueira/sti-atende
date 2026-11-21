@@ -3,13 +3,53 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Inbox, Paperclip, Search } from "lucide-react";
-import type { Chamado, ChamadoUsuario } from "@/types/chamado";
-import { filtrarChamados } from "@/lib/busca";
+import type { Chamado, ChamadoUsuario, Setor, StatusChamado } from "@/types/chamado";
+import { FILTROS_PADRAO, aplicarFiltros, filtrarChamados, filtrosAtivos, type FiltroStatus, type Filtros } from "@/lib/busca";
 import { PRIORIDADES, SETORES, STATUS, STATUS_USUARIO } from "@/lib/setores";
 import { Badge } from "@/components/ui/Cabecalho";
 
-/** Visão da STI (tudo) ou do usuário (número, assunto, solicitante e status simplificado). */
-type Props = { visao: "sti"; chamados: Chamado[] } | { visao: "usuario"; chamados: ChamadoUsuario[] };
+/**
+ * Visão da STI (tudo, com filtros) ou do usuário (número, assunto, solicitante e status simplificado).
+ * `meuId`: quem da STI está logado, para "atribuídos a mim" (null sem login configurado).
+ */
+type Props = { visao: "sti"; chamados: Chamado[]; meuId: string | null } | { visao: "usuario"; chamados: ChamadoUsuario[] };
+
+const OPCOES_STATUS: [FiltroStatus, string][] = [
+  ["todos", "Todos os status"],
+  ["nao_resolvidos", "Não resolvidos"],
+  ...(Object.entries(STATUS) as [StatusChamado, { rotulo: string }][]).map(([v, s]): [FiltroStatus, string] => [v, s.rotulo]),
+];
+const OPCOES_SETOR: ["todos" | Setor, string][] = [
+  ["todos", "Todos os setores"],
+  ...(Object.entries(SETORES) as [Setor, { sigla: string }][]).map(([v, s]): ["todos" | Setor, string] => [v, s.sigla]),
+];
+
+function BarraFiltros({ filtros, mudar, comMeus }: { filtros: Filtros; mudar: (f: Filtros) => void; comMeus: boolean }) {
+  const seletor = "rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary";
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-3" role="group" aria-label="Filtros">
+      <label className="sr-only" htmlFor="filtro-status">Status</label>
+      <select id="filtro-status" value={filtros.status} onChange={(e) => mudar({ ...filtros, status: e.target.value as FiltroStatus })} className={seletor}>
+        {OPCOES_STATUS.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+      </select>
+      <label className="sr-only" htmlFor="filtro-setor">Setor</label>
+      <select id="filtro-setor" value={filtros.setor} onChange={(e) => mudar({ ...filtros, setor: e.target.value as "todos" | Setor })} className={seletor}>
+        {OPCOES_SETOR.map(([v, r]) => <option key={v} value={v}>{r}</option>)}
+      </select>
+      {comMeus && (
+        <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" checked={filtros.meus} onChange={(e) => mudar({ ...filtros, meus: e.target.checked })} className="size-4 accent-brand-primary" />
+          Atribuídos a mim
+        </label>
+      )}
+      {filtrosAtivos(filtros) && (
+        <button type="button" onClick={() => mudar(FILTROS_PADRAO)} className="text-sm font-medium text-brand-primary hover:underline">
+          Limpar filtros
+        </button>
+      )}
+    </div>
+  );
+}
 
 function StatusSti({ c }: { c: Chamado }) {
   return (
@@ -41,12 +81,14 @@ const linkNumero = "font-semibold text-brand-primary hover:underline";
 
 export function ListaChamados(props: Props) {
   const [busca, setBusca] = useState("");
+  const [filtros, setFiltros] = useState<Filtros>(FILTROS_PADRAO);
   const sti = props.visao === "sti";
   const filtrados =
     props.visao === "sti"
-      ? { visao: "sti" as const, chamados: filtrarChamados(props.chamados, busca) }
+      ? { visao: "sti" as const, chamados: aplicarFiltros(filtrarChamados(props.chamados, busca), filtros, props.meuId), meuId: props.meuId }
       : { visao: "usuario" as const, chamados: filtrarChamados(props.chamados, busca) };
   const total = filtrados.chamados.length;
+  const comFiltro = sti && filtrosAtivos(filtros);
 
   return (
     <>
@@ -63,12 +105,23 @@ export function ListaChamados(props: Props) {
         />
       </div>
 
-      <p className="sr-only" aria-live="polite">{total} chamado(s) encontrado(s)</p>
+      {props.visao === "sti" && <BarraFiltros filtros={filtros} mudar={setFiltros} comMeus={props.meuId !== null} />}
+
+      <p className={sti && (comFiltro || busca.trim()) ? "mb-3 text-sm text-gray-500" : "sr-only"} aria-live="polite">
+        {sti ? `Mostrando ${total} de ${props.chamados.length} chamado(s)` : `${total} chamado(s) encontrado(s)`}
+      </p>
 
       {total === 0 ? (
         <div className="flex flex-col items-center rounded-xl border border-gray-100 bg-white p-10 text-center text-gray-500">
           <Inbox className="mb-2 size-8" aria-hidden />
-          {busca.trim() ? (
+          {comFiltro ? (
+            <>
+              Nenhum chamado com esses filtros{busca.trim() ? ` para “${busca}”` : ""}.
+              <button type="button" onClick={() => setFiltros(FILTROS_PADRAO)} className="mt-3 font-semibold text-brand-primary hover:underline">
+                Limpar filtros
+              </button>
+            </>
+          ) : busca.trim() ? (
             <>Nenhum chamado encontrado para “{busca}”.</>
           ) : (
             <>
@@ -78,7 +131,7 @@ export function ListaChamados(props: Props) {
           )}
         </div>
       ) : filtrados.visao === "sti" ? (
-        <TabelaSti chamados={filtrados.chamados} />
+        <TabelaSti chamados={filtrados.chamados} meuId={filtrados.meuId} />
       ) : (
         <TabelaUsuario chamados={filtrados.chamados} />
       )}
@@ -138,7 +191,18 @@ function TabelaUsuario({ chamados }: { chamados: ChamadoUsuario[] }) {
   );
 }
 
-function TabelaSti({ chamados }: { chamados: Chamado[] }) {
+/** "Responsável" com a marca "(você)" para quem está logado. */
+function Responsavel({ c, meuId }: { c: Chamado; meuId: string | null }) {
+  if (!c.responsavel) return <span className="text-gray-400">Na fila</span>;
+  return (
+    <>
+      {c.responsavel}
+      {meuId !== null && c.responsavelId === meuId && <span className="ml-1 text-xs font-semibold text-brand-primary">(você)</span>}
+    </>
+  );
+}
+
+function TabelaSti({ chamados, meuId }: { chamados: Chamado[]; meuId: string | null }) {
   return (
     <>
       {/* Celular: cartões */}
@@ -158,7 +222,7 @@ function TabelaSti({ chamados }: { chamados: Chamado[] }) {
                 <dt className="text-gray-500">Solicitante</dt>
                 <dd>{c.solicitante}{c.interno && <Interno />}</dd>
                 <dt className="text-gray-500">Responsável</dt>
-                <dd>{c.responsavel ?? "Na fila"}</dd>
+                <dd><Responsavel c={c} meuId={meuId} /></dd>
                 {c.rpEquipamento && (
                   <>
                     <dt className="text-gray-500">RP</dt>
@@ -196,7 +260,7 @@ function TabelaSti({ chamados }: { chamados: Chamado[] }) {
                 </td>
                 <td className="p-4">{c.solicitante}{c.interno && <Interno />}</td>
                 <td className="p-4"><Badge classe={SETORES[c.setor].badge}>{SETORES[c.setor].sigla}</Badge></td>
-                <td className="p-4">{c.responsavel ?? <span className="text-gray-400">Na fila</span>}</td>
+                <td className="p-4"><Responsavel c={c} meuId={meuId} /></td>
                 <td className="p-4"><StatusSti c={c} /></td>
                 <td className="whitespace-nowrap p-4 font-mono text-gray-700">{c.rpEquipamento ?? <span className="font-sans text-gray-400">—</span>}</td>
               </tr>
