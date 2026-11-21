@@ -19,7 +19,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/anexos/[id]">) 
     return new Response(new Blob([anexo.bytes as Uint8Array<ArrayBuffer>], { type: anexo.tipo }), {
       headers: {
         "Content-Type": anexo.tipo,
-        "Cache-Control": "private, max-age=600",
+        // Não fica no cache do navegador: depois do "Sair", num computador compartilhado, o print não sobra.
+        "Cache-Control": "private, no-store",
         "X-Content-Type-Options": "nosniff",
         // Mesmo aberta direto no navegador, a resposta não executa nada.
         "Content-Security-Policy": "default-src 'none'; sandbox",

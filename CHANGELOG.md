@@ -7,6 +7,11 @@ O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e 
 
 ## [Não publicado]
 
+### Corrigido
+
+- Os prints do erro não ficam mais no cache do navegador (antes ficavam 10 minutos), para não sobrarem depois do
+  "Sair" num computador compartilhado.
+
 ## [1.1.0] - 2026-11-21
 
 Sprint 5: atendimento por perfil. Exige a migração `supabase/migrations/20261121150000_sprint5.sql` no banco.
