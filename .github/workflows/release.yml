@@ -1,0 +1,41 @@
+# Cria uma release no GitHub quando uma tag vX.Y.Z é enviada (git push --follow-tags).
+# As notas da release são a seção da versão no CHANGELOG.md.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Conferir se a tag bate com o package.json
+        run: |
+          versao=$(node -p "require('./package.json').version")
+          if [ "v$versao" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::A tag $GITHUB_REF_NAME não bate com a versão do package.json ($versao)."
+            exit 1
+          fi
+
+      - name: Extrair notas do CHANGELOG
+        run: |
+          awk -v titulo="## [${GITHUB_REF_NAME#v}] " '
+            index($0, titulo) == 1 { achou = 1; next }
+            achou && /^## \[/ { exit }
+            achou { print }
+          ' CHANGELOG.md > notas.md
+          if ! grep -q '[^[:space:]]' notas.md; then
+            echo "::error::O CHANGELOG.md não tem notas para $GITHUB_REF_NAME."
+            exit 1
+          fi
+
+      - name: Criar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notas.md --verify-tag

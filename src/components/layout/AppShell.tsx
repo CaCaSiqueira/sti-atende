@@ -25,13 +25,15 @@ function LinkNav({ item, ativo, perfil, aoClicar }: { item: ItemNavegacao; ativo
   );
 }
 
-function Marca() {
+function Marca({ versao }: { versao: string }) {
   return (
     <div className="flex items-center gap-3">
       <Leaf className="size-7 text-green-400" aria-hidden />
       <div>
         <p className="text-lg font-bold uppercase tracking-wider">STI Atende</p>
-        <p className="text-xs text-gray-400">SEMA-MT</p>
+        <p className="text-xs text-gray-400">
+          SEMA-MT · <span title="Versão do sistema">v{versao}</span>
+        </p>
       </div>
     </div>
   );
@@ -87,7 +89,7 @@ function ConteudoSidebar({ pathname, usuario, aoNavegar }: { pathname: string; u
   );
 }
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, versao }: { children: ReactNode; versao: string }) {
   const pathname = usePathname();
   const [menuAberto, setMenuAberto] = useState(false);
   const [usuario, setUsuario] = useState<EstadoUsuario>(undefined);
@@ -109,7 +111,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Desktop: barra lateral fixa */}
       <aside className="hidden w-64 shrink-0 flex-col bg-brand-dark text-white shadow-xl md:flex">
         <div className="border-b border-gray-700 p-6">
-          <Marca />
+          <Marca versao={versao} />
         </div>
         <ConteudoSidebar pathname={pathname} usuario={usuario} aoNavegar={fechar} />
       </aside>
@@ -120,7 +122,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button aria-label="Fechar menu" className="absolute inset-0 bg-black/50" onClick={fechar} />
           <aside className="relative flex h-full w-72 max-w-[85%] flex-col bg-brand-dark text-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-700 p-4">
-              <Marca />
+              <Marca versao={versao} />
               <button onClick={fechar} aria-label="Fechar menu" className="rounded-lg p-2 hover:bg-gray-800">
                 <X className="size-5" aria-hidden />
               </button>
@@ -132,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center justify-between bg-brand-dark px-4 py-3 text-white md:hidden">
-          <Marca />
+          <Marca versao={versao} />
           <button
             onClick={() => setMenuAberto(true)}
             aria-label="Abrir menu"

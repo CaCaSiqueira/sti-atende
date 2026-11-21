@@ -43,6 +43,7 @@ A IA **interpreta e redige**; o **código decide** setor e prioridade pelas regr
 | `npm run typecheck` | Checagem de tipos |
 | `npm run lint` | ESLint |
 | `npm run build` | Build de produção |
+| `npm run lancar -- minor` | Lança uma versão nova (veja [Versionamento](#versionamento)) |
 
 ## Acesso para avaliação
 
@@ -89,16 +90,41 @@ docs/            protótipo aprovado (Sprint 0) e prompt original
 src/app/(app)/   telas (layout com barra lateral)
 src/app/api/     rotas de API (health)
 src/components/  componentes React por área (chat, chamados, saude, layout)
-src/lib/         regras de negócio e acesso a dados (roteamento, chamados, health, sprints)
+src/lib/         regras de negócio e acesso a dados (roteamento, chamados, health, sprints, versao)
 src/types/       tipos compartilhados
 ```
 
 ## Sprints
 
-| Sprint | Entrega | Status |
+| Sprint | Entrega | Versão | Status |
+|---|---|---|---|
+| 0 | Protótipo HTML (`docs/prototipo.html`) | (incluída na 0.1.0) | ✅ |
+| 1 | Setup Next.js, Tailwind, Git, rota de saúde | 0.1.0 | ✅ |
+| 2 | Telas do protótipo em React, roteamento testado, Saúde ao vivo | 0.2.0 | ✅ |
+| 3 | Supabase com RLS, IA Gemini com fallback, SLA no servidor | 0.3.0 | ✅ |
+| 4 | Login por perfil, deploy na Vercel (São Paulo), testes de permissão | 0.4.0 | ✅ |
+
+A versão **1.0.0** é a primeira estável: plano de entrega concluído e sistema no ar.
+
+## Versionamento
+
+O projeto segue o [Versionamento Semântico](https://semver.org/lang/pt-BR/) (`MAIOR.MENOR.CORREÇÃO`). A versão fica no `package.json` e aparece na barra lateral, na Saúde do Sistema e em `/api/health`. O histórico está no [CHANGELOG.md](CHANGELOG.md).
+
+| Mudança | Exemplo | Versão |
 |---|---|---|
-| 0 | Protótipo HTML (`docs/prototipo.html`) | ✅ |
-| 1 | Setup Next.js, Tailwind, Git, rota de saúde | ✅ |
-| 2 | Telas do protótipo em React, roteamento testado, Saúde ao vivo | ✅ |
-| 3 | Supabase com RLS, IA Gemini com fallback, SLA no servidor | ✅ |
-| 4 | Login por perfil, deploy na Vercel (São Paulo), testes de permissão | ✅ |
+| Correção sem mudar o comportamento esperado | Ajuste de texto, bug no roteamento | `1.0.0` → `1.0.1` (`patch`) |
+| Funcionalidade nova, compatível | Nova tela, nova regra de SLA, nova sprint | `1.0.0` → `1.1.0` (`minor`) |
+| Mudança que quebra algo existente | Rota de API removida ou renomeada, migração que exige ação manual | `1.0.0` → `2.0.0` (`major`) |
+
+As mensagens de commit seguem os [Conventional Commits](https://www.conventionalcommits.org/pt-br/), que indicam o tipo de versão: `fix:` pede `patch`, `feat:` pede `minor` e `feat!:` ou `BREAKING CHANGE:` pede `major`. Já `docs:`, `test:` e `chore:` sozinhos não exigem versão nova.
+
+**No dia a dia:** a cada mudança relevante, anote uma linha em `## [Não publicado]` no `CHANGELOG.md`, nas seções Adicionado, Alterado, Corrigido ou Removido.
+
+**Para lançar uma versão:**
+
+```bash
+npm run lancar -- minor
+git push --follow-tags
+```
+
+O primeiro comando aceita `patch`, `minor` ou `major`. Ele transforma o "Não publicado" na nova versão com a data de hoje, atualiza o `package.json` e o `package-lock.json`, faz o commit `chore(release): vX.Y.Z` e cria a tag `vX.Y.Z`. Ao receber a tag, o GitHub cria a release com as notas do CHANGELOG (`.github/workflows/release.yml`). O `npm test` falha se a versão do `package.json` não tiver entrada no CHANGELOG.

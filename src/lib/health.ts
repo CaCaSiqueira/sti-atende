@@ -1,6 +1,7 @@
 import "server-only";
 import { pingBanco } from "./chamados";
 import { iaConfigurada, modeloIA, obterUltimaChamadaIA } from "./ia";
+import { VERSAO } from "./versao";
 
 /**
  * Verificações de saúde do STI Atende.
@@ -83,7 +84,7 @@ export async function gerarRelatorioSaude(): Promise<RelatorioSaude> {
   const verificacoes = [aplicacao(), await bancoDeDados(), assistenteIA(), integracaoSema()];
   return {
     status: statusGeral(verificacoes),
-    versao: process.env.npm_package_version ?? "0.1.0",
+    versao: VERSAO,
     commit: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
     ambiente: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "desconhecido",
     geradoEm: new Date().toISOString(),
